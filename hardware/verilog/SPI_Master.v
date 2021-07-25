@@ -1,241 +1,243 @@
-///////////////////////////////////////////////////////////////////////////////
-// Description: SPI (Serial Peripheral Interface) Master
-//              Creates master based on input configuration.
-//              Sends a byte one bit at a time on MOSI
-//              Will also receive byte data one bit at a time on MISO.
-//              Any data on input byte will be shipped out on MOSI.
+module spi_master(
+  // Global signals
+  input wire CLK,            
+  input wire RESET,
+  // SFR signals
+  input wire psel,
+  input wire penable,
+  input wire WE,        // Write data to SFR
+  input wire RE,        // Read data from SFR
+  input wire [7:0] ADDRD,    // SFR address
+  // Data bus
+  input wire [7:0] DATABI,    // Main data bus input
+  output reg [7:0] DATAB,    // Main data bus output
+  // SPI ports
+  output wire SCK,        // Serial clock output
+  output wire MOSI,       // Master Out Slave In
+  input  wire MISO,       // Master In Slave Out
+  output reg  INT,        // SPI interrupt output
+  output reg  SSn,        // SSn Slave Select Signal
+  // Others
+  input wire ES            // Interrupt Enable Register
+);
+
+parameter SPCR_ADDR = 8'h02;
+parameter SPSR_ADDR = 8'h03;
+parameter SPDR_ADDR = 8'h04;
+
+// Module body
 //
-//            **To kick-off transaction: User must pulse i_TX_DV
-//            **This module supports multi-byte transmissions by pulsing
-//            **i_TX_DV and loading up i_TX_Byte when o_TX_Ready is high.
-//
-//              This module is only responsible for controlling Clk, MOSI, 
-//              and MISO.  If the SPI peripheral requires a chip-select, 
-//              this must be done at a higher level.
-//
-// Note:        i_Clk must be at least 2x faster than i_SPI_Clk
-//
-// Parameters:  SPI_MODE, can be 0, 1, 2, or 3.  See above.
-//              Can be configured in one of 4 modes:
-//              Mode | Clock Polarity (CPOL/CKP) | Clock Phase (CPHA)
-//               0   |             0             |        0
-//               1   |             0             |        1
-//               2   |             1             |        0
-//               3   |             1             |        1
-//              More: https://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus#Mode_numbers
-//              CLKS_PER_HALF_BIT - Sets frequency of o_SPI_Clk.  o_SPI_Clk is
-//              derived from i_Clk.  Set to integer number of clocks for each
-//              half-bit of SPI data.  E.g. 100 MHz i_Clk, CLKS_PER_HALF_BIT = 2
-//              would create o_SPI_CLK of 25 MHz.  Must be >= 2
-//
-///////////////////////////////////////////////////////////////////////////////
+reg  [7:0] spcr;       // SPI Control Register
+wire [7:0] spsr;       // SPI Status Register
+reg  [7:0] spdr;       // SPI Data Register
+reg  [7:0] spdr_rx;
+reg  [7:0] spdr_tx;
 
-module SPI_Master
-  #(parameter SPI_MODE = 1,
-    parameter CLKS_PER_HALF_BIT = 2)
-  (
-   // Control/Data Signals,
-   input        i_Rst_L,     // FPGA Reset
-   input        i_Clk,       // FPGA Clock
-   
-   // TX (MOSI) Signals
-   input [7:0]  i_TX_Byte,        // Byte to transmit on MOSI
-   input        i_TX_DV,          // Data Valid Pulse with i_TX_Byte
-   output reg   o_TX_Ready,       // Transmit Ready for next byte
-   
-   // RX (MISO) Signals
-   output reg       o_RX_DV,     // Data Valid pulse (1 clock cycle)
-   output reg [7:0] o_RX_Byte,   // Byte received on MISO
+// Misc signals
+reg    tirq;        // Transfer interrupt (selected number of transfers done)
+reg    tx;        // Transmission flag (level high when transmission in progress)
+wire    spdr_ov;
+reg    [1:0] state;    // Statemachine state
+reg    [2:0] bcnt;
 
-   // SPI Interface
-   output reg o_SPI_Clk,
-   input      i_SPI_MISO,
-   output reg o_SPI_MOSI
-   );
+reg  sck_m; 
+wire sck_s, miso_m;
 
-  // SPI Interface (All Runs at SPI Clock Domain)
-  wire w_CPOL;     // Clock polarity
-  wire w_CPHA;     // Clock phase
+wire wr_spdr, wr_spsr;
+reg  wr_spdr_d1;
 
-  reg [$clog2(CLKS_PER_HALF_BIT*2)-1:0] r_SPI_Clk_Count;
-  reg r_SPI_Clk;
-  reg [4:0] r_SPI_Clk_Edges;
-  reg r_Leading_Edge;
-  reg r_Trailing_Edge;
-  reg       r_TX_DV;
-  reg [7:0] r_TX_Byte;
+// modified by peng for apb slave
+wire apb_wr = psel & ~penable & WE;
+wire apb_rd = psel & ~penable & RE;
 
-  reg [2:0] r_RX_Bit_Count;
-  reg [2:0] r_TX_Bit_Count;
+always @(*)
+  case(ADDRD) // synopsys full_case parallel_case
+    SPCR_ADDR: DATAB = spcr;
+    SPSR_ADDR: DATAB = spsr;
+    SPDR_ADDR: DATAB = spdr_rx;
+      default: DATAB = 8'h00;
+  endcase
 
-  // CPOL: Clock Polarity
-  // CPOL=0 means clock idles at 0, leading edge is rising edge.
-  // CPOL=1 means clock idles at 1, leading edge is falling edge.
-  assign w_CPOL  = (SPI_MODE == 2) | (SPI_MODE == 3);
+//assign DATAB = (ADDRD == SPCR_ADDR && apb_rd) ? spcr : 8'hzz;
+//assign DATAB = (ADDRD == SPSR_ADDR && apb_rd) ? spsr : 8'hzz;
+//assign DATAB = (ADDRD == SPDR_ADDR && apb_rd) ? spdr : 8'hzz;
 
-  // CPHA: Clock Phase
-  // CPHA=0 means the "out" side changes the data on trailing edge of clock
-  //              the "in" side captures data on leading edge of clock
-  // CPHA=1 means the "out" side changes the data on leading edge of clock
-  //              the "in" side captures data on the trailing edge of clock
-  assign w_CPHA  = (SPI_MODE == 1) | (SPI_MODE == 3);
-
-
-
-  // Purpose: Generate SPI Clock correct number of times when DV pulse comes
-  always @(posedge i_Clk or negedge i_Rst_L)
-  begin
-    if (~i_Rst_L)
+// SPDR - SPI Data Register
+// SPCR - SPI Control Register
+always @(posedge CLK or posedge RESET)
+  if (RESET)
     begin
-      o_TX_Ready      <= 1'b0;
-      r_SPI_Clk_Edges <= 0;
-      r_Leading_Edge  <= 1'b0;
-      r_Trailing_Edge <= 1'b0;
-      r_SPI_Clk       <= w_CPOL; // assign default state to idle state
-      r_SPI_Clk_Count <= 0;
+        spdr <= #1 8'h00;     // SPDR Reset Value 8'h00
+        spcr <= #1 8'h00;     // SPCR Reset Value 8'h00
     end
-    else
+  else if (apb_wr)
     begin
-
-      // Default assignments
-      r_Leading_Edge  <= 1'b0;
-      r_Trailing_Edge <= 1'b0;
-      
-      if (i_TX_DV)
-      begin
-        o_TX_Ready      <= 1'b0;
-        r_SPI_Clk_Edges <= 16;  // Total # edges in one byte ALWAYS 16
-      end
-      else if (r_SPI_Clk_Edges > 0)
-      begin
-        o_TX_Ready <= 1'b0;
-        
-        if (r_SPI_Clk_Count == CLKS_PER_HALF_BIT*2-1)
+      if (ADDRD == SPDR_ADDR) 
         begin
-          r_SPI_Clk_Edges <= r_SPI_Clk_Edges - 1;
-          r_Trailing_Edge <= 1'b1;
-          r_SPI_Clk_Count <= 0;
-          r_SPI_Clk       <= ~r_SPI_Clk;
+          if (~tx) spdr <= #1 DATABI; // Write data to SPDR
         end
-        else if (r_SPI_Clk_Count == CLKS_PER_HALF_BIT-1)
-        begin
-          r_SPI_Clk_Edges <= r_SPI_Clk_Edges - 1;
-          r_Leading_Edge  <= 1'b1;
-          r_SPI_Clk_Count <= r_SPI_Clk_Count + 1;
-          r_SPI_Clk       <= ~r_SPI_Clk;
-        end
-        else
-        begin
-          r_SPI_Clk_Count <= r_SPI_Clk_Count + 1;
-        end
-      end  
-      else
-      begin
-        o_TX_Ready <= 1'b1;
-      end
-      
-      
-    end // else: !if(~i_Rst_L)
-  end // always @ (posedge i_Clk or negedge i_Rst_L)
-
-
-  // Purpose: Register i_TX_Byte when Data Valid is pulsed./////////////////////////////
-  // Keeps local storage of byte in case higher level module changes the data
-  always @(posedge i_Clk or negedge i_Rst_L)
-  begin
-    if (~i_Rst_L)
-    begin
-      r_TX_Byte <= 8'h00;
-      r_TX_DV   <= 1'b0;
+      else if (ADDRD == SPCR_ADDR)
+            spcr <= #1 DATABI;        // Write data to SPCR
     end
-    else
-      begin
-        r_TX_DV <= i_TX_DV; // 1 clock cycle delay
-        if (i_TX_DV)
-        begin
-          r_TX_Byte <= i_TX_Byte;
-        end
-      end // else: !if(~i_Rst_L)
-  end // always @ (posedge i_Clk or negedge i_Rst_L)
-/////////////////////////////////////////////////////////////////////////////////////////////
 
-  // Purpose: Generate MOSI data
-  // Works with both CPHA=0 and CPHA=1
-  always @(posedge i_Clk or negedge i_Rst_L)
-  begin
-    if (~i_Rst_L)
-    begin
-      o_SPI_MOSI     <= 1'b0;
-      r_TX_Bit_Count <= 3'b111; // send MSb first
-    end
-    else
-    begin
-      // If ready is high, reset bit counts to default
-      if (o_TX_Ready)
-      begin
-        r_TX_Bit_Count <= 3'b111;
-      end
-      // Catch the case where we start transaction and CPHA = 0
-      else if (r_TX_DV & ~w_CPHA)
-      begin
-        o_SPI_MOSI     <= r_TX_Byte[3'b111];
-        r_TX_Bit_Count <= 3'b110;
-      end
-      else if ((r_Leading_Edge & w_CPHA) | (r_Trailing_Edge & ~w_CPHA))
-      begin
-        r_TX_Bit_Count <= r_TX_Bit_Count - 1;
-        o_SPI_MOSI     <= r_TX_Byte[r_TX_Bit_Count];
-      end
-    end
-  end
+assign wr_spdr = apb_wr & (ADDRD == SPDR_ADDR);
+assign spdr_ov = wr_spdr & tx;
 
-//////////////////////////////////////////////////////////////////////////////////////////////
-  // Purpose: Read in MISO data.
-  always @(posedge i_Clk or negedge i_Rst_L)
-  begin
-    if (~i_Rst_L)
-    begin
-      o_RX_Byte      <= 8'h00;
-      o_RX_DV        <= 1'b0;
-      r_RX_Bit_Count <= 3'b111;
-    end
-    else
-    begin
+always @(posedge CLK or posedge RESET)
+  if (RESET)
+     wr_spdr_d1 <= 1'b0;
+  else
+     wr_spdr_d1 <= wr_spdr;
+    
+// Decode SPCR
+wire       spie = spcr[7];   // Interrupt enable bit
+wire       spe  = spcr[6];   // System Enable bit
+wire       dord = spcr[5];   // Data Transmission Order
+wire       mstr = spcr[4];   // Master Mode Select Bit
+wire       cpol = spcr[3];   // Clock Polarity Bit
+wire       cpha = spcr[2];   // Clock Phase Bit
+wire [1:0] spr  = spcr[1:0]; // Clock Rate Select Bits
 
-      // Default Assignments
-      o_RX_DV   <= 1'b0;
+// SPSR - SPI Status Register
+assign wr_spsr = apb_wr & (ADDRD == SPSR_ADDR);
 
-      if (o_TX_Ready) // Check if ready is high, if so reset bit count to default
-      begin
-        r_RX_Bit_Count <= 3'b111;
-      end
-      else if ((r_Leading_Edge & ~w_CPHA) | (r_Trailing_Edge & w_CPHA))
-      begin
-        // Slave generates output data at leading edge (Rising edge) of SPI clk, data is captured @ trailing edge: CPHA=1
-        o_RX_Byte[r_RX_Bit_Count] <= i_SPI_MISO;  // Sample data
-        r_RX_Bit_Count            <= r_RX_Bit_Count - 1;
-        if (r_RX_Bit_Count == 3'b000)
-        begin
-          o_RX_DV   <= 1'b1;   // Byte done, pulse Data Valid
-        end
-      end
-    end
-  end
+reg spif;
+always @(posedge CLK)
+  if (~spe)
+    spif <= #1 1'b0;
+  else
+    spif <= #1 (tirq | spif) & ~(wr_spsr & DATABI[0]);     // Set by hardware, clear by software
+
+reg wcol;
+always @(posedge CLK)
+  if (~spe)
+    wcol <= #1 1'b0;
+  else 
+    wcol <= #1 (spdr_ov | wcol) & ~(wr_spsr & DATABI[1]);    // Set by hardware, clear by software
+
+assign spsr[0]   = spif;
+assign spsr[1]   = wcol;
+assign spsr[7:2] = 6'b000000;
   
- //////////////////////////////////////////////////////////////////////////////////////////////
- 
-  // Purpose: Add clock delay to signals for alignment.
-  always @(posedge i_Clk or negedge i_Rst_L)
-  begin
-    if (~i_Rst_L)
-    begin
-      o_SPI_Clk  <= w_CPOL;
-    end
-    else
-      begin
-        o_SPI_Clk <= r_SPI_Clk;
-      end // else: !if(~i_Rst_L)
-  end // always @ (posedge i_Clk or negedge i_Rst_L)
-  
+// Generate IRQ output
+always @(posedge CLK)
+  INT <= #1 spif & spie & ES;
 
-endmodule // SPI_Master
+// Clock Divider
+//
+// SPR1 SPR0 SCK=fosc divided by
+// 0    0    4
+// 0    1    16
+// 1    0    64
+// 1    1    128
+reg [11:0] clkcnt;
+always @(posedge CLK)
+  if(spe & (|clkcnt & |state))     // pass when (spe = 1, clkcnt ~= 0, state ~= 0)
+    clkcnt <= #1 clkcnt - 1;
+  else
+    case (spr) // synopsys full_case parallel_case
+      2'b00: clkcnt <= #1 'h1;    // fosc/4
+      2'b01: clkcnt <= #1 'h7;    // fosc/16
+      2'b10: clkcnt <= #1 'h1f;    // fosc/64
+      2'b11: clkcnt <= #1 'h3f;    // fosc/128
+    endcase
+
+// Generate clock enable signal for SCK (SPI Serial Clock)
+wire ena = ~|clkcnt; // ena asserts when clkcnt = 0
+
+// State machine for serial data transmission and SCK generation
+always @(posedge CLK)
+  if (~spe)
+    begin
+        state <= #1 2'b00; // Idle
+        bcnt  <= #1 3'h0;
+        tirq  <= #1 1'b0;
+        sck_m <= #1 1'b0;
+        tx    <= #1 1'b0;
+        spdr_rx <= #1 8'h0;
+        spdr_tx <= #1 8'h0;
+    end
+  else
+    begin
+       tirq  <= #1 1'b0;
+
+       case (state) //synopsys full_case parallel_case
+         2'b00: // Idle state
+            begin
+                bcnt  <= #1 3'h7; // Set transfer counter
+                if (wr_spdr_d1) begin
+                  state <= #1 2'b01;
+                  sck_m <= #1 cpol^cpha;     // Initialize SCK
+                  tx <= #1 1'b1;         // Transmission start flag
+                  spdr_tx <= #1 spdr;
+                end
+            end
+
+         2'b01: // Clock-phase2, next data
+            if (ena) begin
+              sck_m   <= #1 ~sck_m;
+              state   <= #1 2'b11;
+            end
+
+         2'b11: // Clock phase1
+            if (ena) begin
+              if (dord) 
+                spdr_tx <= #1 {1'b0, spdr_tx[7:1]}; // LSB first in data transmission
+              else 
+                spdr_tx <= #1 {spdr_tx[6:0], 1'b0}; // MSB first in data transmission
+              
+              if (dord) 
+                spdr_rx <= #1 {miso_m, spdr_rx[7:1]}; // LSB first in data transmission
+              else 
+                spdr_rx <= #1 {spdr_rx[6:0], miso_m}; // MSB first in data transmission
+
+              bcnt <= #1 bcnt - 3'h1;
+
+              if (~|bcnt) begin     // True when bcnt = 0
+                state <= #1 2'b00;
+                sck_m <= #1 cpol;
+                tirq <= #1 1'b1;     // tirq asserts when all bits have been transferred
+                tx <= #1 1'b0;     // Transmission done flag
+              end else begin
+                state <= #1 2'b01;
+                sck_m <= #1 ~sck_m;
+              end
+            end
+
+         2'b10: state <= #1 2'b00;
+       endcase
+    end
+
+//assign SCK = (mstr)? sck_m : 1'hz;
+//assign MOSI = (mstr)? (dord)? spdr_tx[0]:spdr_tx[7] : 1'hz;
+//assign miso_m = (mstr)? MISO : 1'hz;
+assign SCK = sck_m;
+assign MOSI = (dord)? spdr_tx[0]:spdr_tx[7];
+assign miso_m = MISO;
+
+// XJ: start cs from 1
+//assign SSn = 1'b0;
+always @(posedge CLK or posedge RESET)
+  if (RESET)
+    begin
+        SSn <= #1 1'b1;  
+    end
+  else if (apb_wr && (ADDRD == SPCR_ADDR))
+    begin
+        SSn <= #1 1'b0; 
+    end
+
+//// Slave SPI
+//assign sck_s = (SS | mstr)? 1'hz : SCK;
+//assign sck_s_2 = cpol ^ cpha ^ sck_s;
+//assign mosi_s = (SS | mstr)? 1'hz : MOSI;
+//
+//always @(posedge sck_s_2)
+//  if (dord) 
+//    spdr <= #1 {mosi_s, spdr[7:1]}; // LSB first in data transmission
+//  else 
+//    spdr <= #1 {spdr[6:0], mosi_s}; // MSB first in data transmission
+//
+//assign MISO = (SS | mstr)? 1'hz : (dord)? spdr[0]:spdr[7];
+
+endmodule
