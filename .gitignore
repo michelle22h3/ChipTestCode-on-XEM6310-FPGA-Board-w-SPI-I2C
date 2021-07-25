@@ -1,0 +1,24 @@
+# Add intentionally untracked files here to ignore
+
+# IDE untracked folders
+.vscode
+.idea
+
+# Python untracked files
+__pycache__/
+*.py[co]
+*$py.class
+
+# ISE workspace folder
+ise_workspace
+*.bit
+
+# Modelsim simulation related files
+work
+*.wlf
+transcript
+wlft*
+*.vstf
+
+# Testbench related config data
+*.dat

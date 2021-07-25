@@ -1,0 +1,2 @@
+verilog work ../../ClkDiv.v
+verilog work ../example_design/ClkDiv_exdes.v
