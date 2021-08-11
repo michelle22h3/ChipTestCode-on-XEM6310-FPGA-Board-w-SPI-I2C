@@ -1,13 +1,14 @@
 module spi_master(
   // Global signals
-  input wire CLK,            
-  input wire RESET,
+  input wire CLK,        // System CLK  
+  input wire RESET,      // RST: enable 1
   // SFR signals
-  input wire psel,
-  input wire penable,
+  input wire psel,      // SPI Chip selected: Active 1
+  input wire penable,   // SPI Enable: Active 0 (Pulse)
   input wire WE,        // Write data to SFR
   input wire RE,        // Read data from SFR
-  input wire [7:0] ADDRD,    // SFR address
+  input wire [7:0] ADDRD,  // SFR address
+  output wire spim_busy,    // High means SPI Master is busy
   // Data bus
   input wire [7:0] DATABI,    // Main data bus input
   output reg [7:0] DATAB,    // Main data bus output
@@ -50,6 +51,8 @@ reg  wr_spdr_d1;
 wire apb_wr = psel & ~penable & WE;
 wire apb_rd = psel & ~penable & RE;
 
+assign spim_busy = tx;
+
 always @(*)
   case(ADDRD) // synopsys full_case parallel_case
     SPCR_ADDR: DATAB = spcr;
@@ -68,7 +71,7 @@ always @(posedge CLK or posedge RESET)
   if (RESET)
     begin
         spdr <= #1 8'h00;     // SPDR Reset Value 8'h00
-        spcr <= #1 8'h00;     // SPCR Reset Value 8'h00
+        spcr <= #1 8'h00;     // SPCR Reset Value 8'h00 // cpol=0, cpha=0, speed=1 
     end
   else if (apb_wr)
     begin
@@ -217,7 +220,7 @@ assign miso_m = MISO;
 
 // XJ: start cs from 1
 //assign SSn = 1'b0;
-always @(posedge CLK or posedge RESET)
+always @(posedge CLK or posedge RESET) begin
   if (RESET)
     begin
         SSn <= #1 1'b1;  
@@ -226,18 +229,7 @@ always @(posedge CLK or posedge RESET)
     begin
         SSn <= #1 1'b0; 
     end
+end
 
-//// Slave SPI
-//assign sck_s = (SS | mstr)? 1'hz : SCK;
-//assign sck_s_2 = cpol ^ cpha ^ sck_s;
-//assign mosi_s = (SS | mstr)? 1'hz : MOSI;
-//
-//always @(posedge sck_s_2)
-//  if (dord) 
-//    spdr <= #1 {mosi_s, spdr[7:1]}; // LSB first in data transmission
-//  else 
-//    spdr <= #1 {spdr[6:0], mosi_s}; // MSB first in data transmission
-//
-//assign MISO = (SS | mstr)? 1'hz : (dord)? spdr[0]:spdr[7];
 
 endmodule

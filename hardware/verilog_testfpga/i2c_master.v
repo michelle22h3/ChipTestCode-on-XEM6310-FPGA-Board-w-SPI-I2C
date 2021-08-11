@@ -1,8 +1,8 @@
 //`define I2C_DISP
 module i2c_master(
   // CLK, Reset and addr signals
-  input  wire          hclk,
-  input  wire          hresetn,
+  input  wire          hclk,       // System clk    
+  input  wire          hresetn,    // System rst   
   input  wire [6:0]    slave_addr,
   // I2C Interface with on chip Logic
   output reg           scl,

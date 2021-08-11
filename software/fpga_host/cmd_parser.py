@@ -15,7 +15,7 @@ class CmdlineParser:
         # self.parser.add_argument("--input_file", type=str, default="zjy.png", help="Path of input file.")
         # self.parser.add_argument("--output_file", type=str, default="wxm.png", help="Path of destination file.")
         # self.parser.add_argument("--decrypt", action="store_true", help="Decrypt the input file.")
-        self.parser.add_argument("--fpga_bit", type=str, default="../ise_workspace/fpgatop.bit",
+        self.parser.add_argument("--fpg a_bit", type=str, default="../ise_workspace/fpgatop.bit",
                                  help="Path of FPGA bit stream file.")
         self.parser.add_argument("--log_level", type=str, default="INFO",
                                  choices=['NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],

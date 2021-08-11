@@ -207,100 +207,7 @@ ActInFIFO act_in_fifo (
 .empty      (act_in_fifo_empty)         // FIFO empty
 );
 
-// -----------------------------------------------------------------------------
-// Control logic of activation input TX SPI master
-// -----------------------------------------------------------------------------
-SPIMasterTXCtrl act_tx_spi_ctrl
-(
-.clk                (CLK_100M),             // System clock
-.rst                (sw_rst[0]),            // System reset
-.fifo_empty         (act_in_fifo_empty),    // FIFO empty status flag
-.fifo_read_data     (act_in_read_data),     // FIFO read data port
-.spi_tx_ready       (act_in_tx_ready),      // SPI master TX ready flag
-.fifo_read_en       (act_in_read_en),       // FIFO read enable (active high)
-.spi_tx_data_valid  (act_in_tx_data_valid), // SPI master data valid
-.spi_tx_data        (act_in_tx_data)        // SPI master TX data port
-);
-
-// -----------------------------------------------------------------------------
-// Instantiation of SPI master interface of activation in and output
-// -----------------------------------------------------------------------------
-SPI_Master #(.SPI_MODE(1), .CLKS_PER_HALF_BIT(2)) act_spi_master
-(
-// Control/Data Signals,
-.i_Rst_L    (~sw_rst[0]),           // FPGA Reset (active low)
-.i_Clk      (CLK_100M),             // FPGA Clock
-
-// TX (MOSI) Signals
-.i_TX_Byte  (act_in_tx_data),       // Byte to transmit on MOSI
-.i_TX_DV    (act_in_tx_data_valid), // Data Valid Pulse with i_TX_Byte
-.o_TX_Ready (act_in_tx_ready),      // Transmit Ready for next byte
-
-// RX (MISO) Signals
-.o_RX_DV    (act_out_rx_valid),     // Data Valid pulse (1 clock cycle)
-.o_RX_Byte  (act_out_rx_data),      // Byte received on MISO
-
-// SPI Interface
-.o_SPI_Clk  (A_SPI_CLK),            // SPI clock
-.i_SPI_MISO (A_SPI_MISO),           // SPI input rx data (slave to master)
-.o_SPI_MOSI (A_SPI_MOSI)            // SPI output tx data (master to slave)
-);
-
-// -----------------------------------------------------------------------------
-// Instantiation of weight FIFO
-// -----------------------------------------------------------------------------
-WeightFIFO weight_fifo (
-.rst        (sw_rst[0]),            // FIFO reset (active high)
-.wr_clk     (okClk),                // FIFO write side clock domain
-.rd_clk     (CLK_100M),             // FIFO read side clock domain
-.din        (weight_in_write_data), // FIFO write data input
-.wr_en      (weight_in_write_en),   // FIFO write enable (active high)
-.rd_en      (weight_read_en),       // FIFO read enable (active high)
-.dout       (weight_read_data),     // FIFO read data output
-.full       (weight_fifo_full),     // FIFO full
-.empty      (weight_fifo_empty)     // FIFO empty
-);
-
-// -----------------------------------------------------------------------------
-// Control logic of weight TX SPI master
-// -----------------------------------------------------------------------------
-SPIMasterTXCtrl weight_tx_spi_ctrl
-(
-.clk                (CLK_100M),             // System clock
-.rst                (sw_rst[0]),            // System reset
-.fifo_empty         (weight_fifo_empty),    // FIFO empty status flag
-.fifo_read_data     (weight_read_data),     // FIFO read data port
-.spi_tx_ready       (weight_tx_ready),      // SPI master TX ready flag
-.fifo_read_en       (weight_read_en),       // FIFO read enable (active high)
-.spi_tx_data_valid  (weight_tx_data_valid), // SPI master data valid
-.spi_tx_data        (weight_tx_data)        // SPI master TX data port
-);
-
-// -----------------------------------------------------------------------------
-// Instantiation of SPI master interface of weight
-// -----------------------------------------------------------------------------
-SPI_Master #(.SPI_MODE(0), .CLKS_PER_HALF_BIT(2)) weight_spi_master
-(
-// Control/Data Signals,
-.i_Rst_L    (~sw_rst[0]),           // FPGA Reset (active low)
-.i_Clk      (CLK_100M),             // FPGA Clock
-
-// TX (MOSI) Signals
-.i_TX_Byte  (weight_tx_data),       // Byte to transmit on MOSI
-.i_TX_DV    (weight_tx_data_valid), // Data Valid Pulse with i_TX_Byte
-.o_TX_Ready (weight_tx_ready),      // Transmit Ready for next byte
-
-// RX (MISO) Signals
-.o_RX_DV    (/* floating */),       // Data Valid pulse (1 clock cycle)
-.o_RX_Byte  (/* floating */),       // Byte received on MISO
-
-// SPI Interface
-.o_SPI_Clk  (W_SPI_CLK),            // SPI clock
-.i_SPI_MISO (1'b0),                 // SPI input rx data (slave to master)
-.o_SPI_MOSI (W_SPI_MOSI)            // SPI output tx data (master to slave)
-);
-
-// ---------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
 // Instantiation of output activation FIFO
 // Activation SPI master writes the `MISO` data to FIFO and `pipeOutActOut` reads the FIFO data
 // ---------------------------------------------------------------------------------------------
@@ -316,40 +223,6 @@ ActOutFIFO act_out_fifo (
 .empty      (act_out_fifo_empty)    // FIFO empty
 );
 
-// ---------------------------------------------------------------------------------------------
-// Control logic of output activation RX SPI master
-// ---------------------------------------------------------------------------------------------
-SPIMasterRXCtrl act_out_rx_spi_ctrl
-(
-.clk                (CLK_100M),             // System clock
-.rst                (sw_rst[0]),            // System reset (active high)
-.spi_rx_data_valid  (act_out_rx_valid),     // SPI master rx data valid
-.spi_rx_data        (act_out_rx_data),      // SPI master rx data
-.act_out_rx_stage   (act_out_rx_stage),     // Flag for act output RX stage
-.fifo_write_en      (act_out_write_en),     // FIFO write enable (active high)
-.fifo_write_data    (act_out_write_data)    // FIFO write data
-);
-
-// ---------------------------------------------------------------------------------------------
-// Main FPGA controller
-// TODO: modify the parameter of drain cycles and compute cycles to match the actual behavior
-// ---------------------------------------------------------------------------------------------
-MainCtrl #(.DRAIN_TX_CYCLE(32), .CHIP_MAP_CYCLE(10000), .CHIP_COMP_CYCLE(10000)) main_ctrl
-(
-.clk                    (CLK_100M),             // System clock
-.rst                    (sw_rst[0]),            // System reset
-.weight_tx_data_valid   (weight_tx_data_valid), // Weight TX valid (1B sent to slave)
-.act_in_tx_data_valid   (act_in_tx_data_valid), // Input activation TX valid (1B sent to slave)
-.act_out_rx_valid       (act_out_rx_valid),     // Output activation RX valid (1B received by master)
-.act_out_rx_stage       (act_out_rx_stage),     // Flag for receiving activation stage
-.act_spi_slave_cs       (Activation_CS),        // Chip select of activation SPI slave interface
-.weight_spi_slave_cs    (Weight_CS),            // Chip select of weight SPI slave interface
-.start_mapw             (chip_start_mapw),           // 2-cycle trigger signal indicating IC start the weight mapping
-.start_calc             (chip_start_calc),      // 2-cycle trigger to tell IC start calculation
-.calc_done              (calc_done),            // 1-cycle trigger to tell host IC finishes calculation
-.led_state              (led_state),            // Indicator of current state of main control logic
-.act_out_rx_done        (act_out_rx_done)       // 1-cycle trigger to tell host IC sent out all calculated data
-);
 
 // ---------------------------------------------------------------------------------------------
 // Miscellaneous connections to IC chip
