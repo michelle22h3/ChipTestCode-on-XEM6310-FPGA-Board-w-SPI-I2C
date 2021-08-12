@@ -1,6 +1,6 @@
 module FPGA_top_w_chip (
     input  wire [4:0] okUH,      // Host interface input signals
-    output wire [2:0] okHU,       // Host interface output signals
+    output wire [2:0] okHU,      // Host interface output signals
     inout  wire [31:0] okUHU,    // Host interface bidirectional signals
     inout  wire okAA,            // Host interface bidirectional signal
     input  wire sys_clkn,        // System differential clock input (negative)
@@ -13,11 +13,10 @@ module FPGA_top_w_chip (
     output wire spi_mosi,
     output wire spi_miso,
     output wire spi_cs,
-    output wire itf_sel,        // Selcetion of interface
+    output wire itf_sel,         // Selcetion of interface
     // ---- Control and status signals connected to chip ---- //
-
-    input wire  sta_wei,        // Weight writing status= 1 after writing all weights
-    input wire  sta_act         // Act assertion status= 1 after input trigger
+    input wire  sta_wei,         // sta_wei = 1 after writing all weights
+    input wire  sta_act          // sta_act = 1 after input trigger
 );
 `include "config.vh"
 // -----------------------------------------------------------------------------
@@ -25,8 +24,8 @@ module FPGA_top_w_chip (
 // -----------------------------------------------------------------------------
 // System clock (Differential to single-ended buffer primitive by Xilinx)
 wire  CLK_100M;                  // process clock
-wire  CLK_6P4M;
-wire  CLK_25P6M;
+wire  CLK_6P4M;                  // Divided clock
+wire  CLK_25P6M;                 // Divided clock
 
 IBUFGDS osc_clk(.O(CLK_100M), .I(sys_clkp), .IB(sys_clkn));
 // `okHost` endpoints
@@ -38,17 +37,17 @@ wire [64:0] okEH;
 wire [65*`NUM_ENDPOINTS-1:0] okEHx;
 
 // `okWireIn` connections
-wire [31:0] sw_rst;                       //---- Bit 0 is Software reset ----//
-wire [31:0] itf_sel_x;                    //---- Bit 0 is itf_sel ----//
+wire [31:0] sw_rst;                       //---- Bit [0] is Software reset ----//
+wire [31:0] itf_sel_x;                    //---- Bit [0] is itf_sel ----//
 assign itf_sel = itf_sel_x[0];
 
 // `okWireOut` connections
 wire [64:0] okEHChipSTA;
-wire [31:0] sta_chip;                     //---- Bit 0,1 is status from chip ----//
+wire [31:0] sta_chip;                     //---- Bit [0],[1] is status from chip ----//
 assign sta_chip = {30'd0, sta_wei, sta_act}; // 2'b10 Write weight done; 2'b11 input trigger done
 
 // `okTriggerIn` connections
-wire [31:0] spi_config;                   //---- Bit 0 is SPI Master Config ----//
+wire [31:0] spi_config;                   //---- Bit [0] is SPI Master Config ----//
 
 // `okPipeIn` endpoints
 // FIFO Data input connections
@@ -74,15 +73,15 @@ wire                     FIFOB_empty;
 // -----------------------------------------------------------------------------
 // Assign on-board LED
 // -----------------------------------------------------------------------------
-assign led = ~ {sw_rst[0], 5'd0, sta_wei, sta_act};        // 0 enable
+assign led = ~ {sw_rst[0], 5'd0, sta_wei, sta_act};  // Led is 0 enable
 // -----------------------------------------------------------------------------
 // Instantiation of Clk divider
 // -----------------------------------------------------------------------------
 CLK_DIV CLK_DIV_uut
 (
 .CLK_IN1    (CLK_100M),             // Clock in ports
-.CLK_OUT1   (CLK_6P4M),             // Clock out ports
-.CLK_OUT2   (CLK_25P6M)        // Clock out ports
+.CLK_OUT1   (CLK_6P4M),             // Clock out port 1
+.CLK_OUT2   (CLK_25P6M)             // Clock out port 2
 );
 // -----------------------------------------------------------------------------
 // Instantiation of host interface
@@ -101,7 +100,6 @@ okHost hostIF(
 // -----------------------------------------------------------------------------
 okWireOR #(.N(`NUM_ENDPOINTS)) wireOR (okEH, okEHx);
 assign okEHx = {okEHChipSTA, okEHFIFOAIn, okEHFIFOBOut};
-
 // -----------------------------------------------------------------------------
 // Instantiation of `okWireIn`
 // -----------------------------------------------------------------------------
@@ -151,7 +149,7 @@ okPipeIn pipeInActIn(
 // Instantiation of `okPipeOut`
 // -----------------------------------------------------------------------------
 okPipeOut pipeOutActOut(
-.okHE       (okHE),                     // Control signals to the target endpoints
+.okHE       (okHE),                       // Control signals to the target endpoints
 .okEH       (okEHFIFOBOut),               // Control signals from the target endpoints
 .ep_addr    (`FIFOB_OUT_DATA_ADDR),       // Endpoint address
 .ep_datain  (fifob_out_read_data),        // Pipe data input

@@ -16,7 +16,7 @@
 `define FIFOB_OUT_DATA_ADDR 8'hA7
 
 // Number of endpoints requiring `okEH`
-`define NUM_ENDPOINTS 4
+`define NUM_ENDPOINTS 3
 
 
 
