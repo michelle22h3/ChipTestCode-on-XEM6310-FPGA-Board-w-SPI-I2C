@@ -1,6 +1,6 @@
 module FPGA_top_w_chip (
     input  wire [4:0] okUH,      // Host interface input signals
-    output wire[2:0] okHU,       // Host interface output signals
+    output wire [2:0] okHU,       // Host interface output signals
     inout  wire [31:0] okUHU,    // Host interface bidirectional signals
     inout  wire okAA,            // Host interface bidirectional signal
     input  wire sys_clkn,        // System differential clock input (negative)
