@@ -40,9 +40,8 @@ def run_host(fpga_tester, args):
 
     # Read the calculated data
     onebyte_raddr, onebyte_rdata = fpga_tester.receive_one_byte()
-    print (f"Received data {onebyte_rdata} in address {onebyte_raddr}")
-
-
+    print(onebyte_raddr)
+    print(onebyte_rdata)
 
 def main():
     args = CmdlineParser().parse()
