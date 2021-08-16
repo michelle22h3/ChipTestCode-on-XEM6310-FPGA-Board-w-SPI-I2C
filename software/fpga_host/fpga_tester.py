@@ -37,12 +37,13 @@ class FPGATester:
     # Each entry is stored in the dictionary as "name": AddrMapEntry
     AddrMapEntry = namedtuple("AddrMapEntry", ["type", "address"])  # Data type for each address map entry
     ADDR_MAP = OrderedDict([
-        ("SW_RST", AddrMapEntry(EndpointType.WIRE_IN, 0x10)),  # Software reset pin address
-        ("CALC_DONE", AddrMapEntry(EndpointType.TRIGGER_OUT, 0x60)),  # Calculation done status trigger
-        ("ACT_OUT_RX_DONE", AddrMapEntry(EndpointType.TRIGGER_OUT, 0x61)),  # Activation output RX done status trigger
-        ("ACT_IN_DATA", AddrMapEntry(EndpointType.PIPE_IN, 0x80)),  # Activation input data FIFO
-        ("WEIGHT_DATA", AddrMapEntry(EndpointType.PIPE_IN, 0x81)),  # Weight data FIFO
-        ("ACT_OUT_DATA", AddrMapEntry(EndpointType.PIPE_OUT, 0xA0)),  # Activation output data FIFO
+        ("SW_RST", AddrMapEntry(EndpointType.WIRE_IN, 0x07)),  # Software reset pin address
+        ("ITF_SEL", AddrMapEntry(EndpointType.WIRE_IN, 0x17)),  # ITF Selection signal
+        ("STA_CHIP", AddrMapEntry(EndpointType.WIRE_OUT, 0x27)),  # Status of CIM chip
+        ("FIFOB_EMPTY", AddrMapEntry(EndpointType.WIRE_OUT, 0x37)), # 1 means FIFOB is empty
+        ("SPI_CONFIG", AddrMapEntry(EndpointType.TRIGGER_IN, 0x47)),  # Config SPI Master
+        ("FIFOA_IN_DATA", AddrMapEntry(EndpointType.PIPE_IN, 0x87)),    # data into FIFO_A
+        ("FIFOB_OUT_DATA", AddrMapEntry(EndpointType.PIPE_OUT, 0xA7)),    # data from FIFO_B
     ])
 
     # Expected data bytes of each tensor
@@ -59,7 +60,7 @@ class FPGATester:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.debug = debug
         self.device = self.initialize_device(fpga_bit_file)
-
+    # ------------- Device Initialization -------------#
     def initialize_device(self, fpga_bit_file):
         """
         Initialize FPGA device and sanity check the connection of FPGA.
@@ -97,108 +98,95 @@ class FPGATester:
                 return None
 
         return device
-
+    # ----------------------------------------------------#
     def reset(self):
         """Reset FPGA hardware."""
         # Generate a falling edge @ sw reset address (write 1 first then 0)
         self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x01)
         self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x00)
+        # Configure SPI Master using a config trigger signal
+        self.write_trigger_in(self.ADDR_MAP["SPI_CONFIG"].address, 0) 
 
-    def send_act_in(self, act_in_data):
-        """Send the specified activation input data bytearray to the FPGA."""
-        assert len(act_in_data) == self.ACT_IN_BYTES, "Activation data is expected to be of 64B."
-        self.logger.info("Start sending activation input data to FPGA.")
-        self.write_pipe_in(self.ADDR_MAP["ACT_IN_DATA"].address, act_in_data)
+    def itf_selection(self, value):
+        # Input: integer value
+        """Selection of I2C and SPI, 0x00(0) means I2C and 0x01(1) means SPI"""
+        self.write_wire_in(self.ADDR_MAP["ITF_SEL"].address, value)
 
-    def send_weight(self, weight_data):
-        """Send the specified weight data bytearray to the FPGA."""
-        assert len(weight_data) == self.WEIGHT_BYTES, "Weight data is expected to be of 512B."
-        self.logger.info("Start sending weight data to FPGA.")
-        self.write_pipe_in(self.ADDR_MAP["WEIGHT_DATA"].address, weight_data)
+    def fifob_not_empty(self):
+        """Find out if FIFO_B is empty, return True or False"""
+        # True means fifob is not empty, false means fifob is empty
+        return self.read_wire_out(self.ADDR_MAP["FIFOB_EMPTY"].address) == 1
+        
+    def send_one_byte(self, waddr, wdata):
+        # Input: interger value
+        """Send the 1 byte data to the FPGA."""
+        to_be_write = [0, 1, waddr, wdata]
+        four_byte = bytearray(to_be_write)
+        """Data to be pipe in is of 4 byte"""
+        assert len(four_byte) == 4 
+        self.logger.info("Writing 1 byte data to FPGA FIFOA.")
+        self.write_pipe_in(self.ADDR_MAP["FIFOA_IN_DATA"].address, four_byte)
+    
+    def receive_one_byte(self,raddr, rdata):
+        """Receive one byte data from FIFO_B"""
+        fifob_out_data = bytearray(4)
+        self.logger.info("Receiving 1 byte data from FPGA FIFOB.")
+        self.read_pipe_out(self.ADDR_MAP["FIFOB_OUT_DATA"].address, fifob_out_data)
+        raddr = fifob_out_data[2]
+        rdata = fifob_out_data[3]
+        return raddr, rdata
 
-    def receive_act_out(self, act_out_data):
-        """Receive the calculated activation output from the FPGA."""
-        assert len(act_out_data) == self.ACT_OUT_BYTES, "Activation data is expected to be of 64B."
-        self.logger.info("Start receiving calculated activation output data from FPGA.")
-        self.read_pipe_out(self.ADDR_MAP["ACT_OUT_DATA"].address, act_out_data)
-
-    def calc_done(self):
-        """Indicator of calculation finishes."""
-        return self.read_trigger_out(self.ADDR_MAP["CALC_DONE"].address)
-
-    def act_out_rx_done(self):
-        """Indicator of receiving all activation output."""
-        return self.read_trigger_out(self.ADDR_MAP["ACT_OUT_RX_DONE"].address)
-
-    def write_wire_in(self, addr, value, mask=0x01):
+    # ----------------- Write and read Endpoints ------------------ #
+     # Write Wire In
+    def write_wire_in(self, addr, value, mask=0x01):   
         """
         Helper to write the specified value to the `wire_in` endpoint in FPGA.
         :param addr: 8-bit address of the `wire_in`.
         :param value: 32-bit integer of value to be written into.
-        :param mask: 32-bit mask applied to the write value (LSB by default).
+        :param mask: 32-bit mask applied to the write value (1 bit LSB by default).
         """
+        # Detect value and mask is proper
         assert 0 <= value <= 2 ** 32 - 1 and 0 <= mask <= 2 ** 32 - 1
         self.device.SetWireInValue(addr, value, mask)
         self.device.UpdateWireIns()
 
-    def read_trigger_out(self, addr, mask=0x01):
+    # Read Wire Out
+    def read_wire_out(self, addr):                       
         """
-        Helper to read the value of LSB of `trigger_out` endpoint in FPGA.
-        :param addr: 8-bit address of the `trigger_out`.
-        :param mask: 32-bit mask applied to trigger value (LSB by default).
-        :return: LSB of the `trigger_out` data.
+        Helper to read the value of `wire_out` endpoint in FPGA.
+        :param addr: 8-bit address of the `wire_out`.
+        :return: 32-bit `wire_out` data.
         """
-        self.device.UpdateTriggerOuts()
-        return self.device.IsTriggered(addr, mask)
+        self.device.UpdateWireOuts()
+        return self.device.GetWireOutValue(addr)
+    
+    # Write Trigger In
+    def write_trigger_in(self, addr, bit):
+        """
+        Helper to write the value of `Trigger_in` endpoint in FPGA.
+        :param addr: 8-bit address of the `Trigger_in`
+        :bit:The specific bit of the trigger to activate.
+        :return: NoError - Operation completed successfully.
+        """
+        assert 0 <= bit <= 2 ** 32 - 1
+        self.device.ActivateTriggerIn(addr, bit)
 
+    # Write Pipe In
     def write_pipe_in(self, addr, data):
         """
         Helper to write the specified data to the `pipe_in` endpoint in FPGA.
         :param addr: 8-bit address of the `pipe_in`.
         :param data: data of type bytearray to be written to `pipe` endpoint.
+        the 'data' parameter is mutable type bytearray
         """
         self.device.WriteToPipeIn(addr, data)
 
+    # Read Pipe Out
     def read_pipe_out(self, addr, data):
         """
         Helper to read the data from the `pipe_out` endpoint in FPGA.
         :param addr: 8-bit address of the `pipe_out`.
-        :param data: read data will be placed (change in-place) in the data.
+        :param data: read data will be placed (change in-place) in the data.    
         """
         self.device.ReadFromPipeOut(addr, data)
 
-    def gen_config_header(self, config_file):
-        """
-        Helper to generate the verilog configure header.
-        :param config_file: file name of config header to be written.
-        """
-        cmdline = " ".join([sys.executable] + sys.argv)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        header_comment = "// Config file automatically generated by cmd: `{}`\n".format(cmdline)
-        header_comment += "// User: {}; Time: {}\n".format(getpass.getuser(), current_time)
-
-        header_guard_begin = "\n".join(["`ifndef __CONFIG_VH__", "`define __CONFIG_VH__"])
-        header_guard_end = "`endif"
-
-        data_bytes = "\n".join(["`define ACT_IN_BYTES {}".format(self.ACT_IN_BYTES),
-                                "`define WEIGHT_BYTES {}".format(self.WEIGHT_BYTES),
-                                "`define ACT_OUT_BYTES {}".format(self.ACT_OUT_BYTES)])
-
-        addr_map_list, num_endpoints = [], 0
-        for key, value in self.ADDR_MAP.items():
-            addr_map_list.append("`define {} 8'h{:02X}".format(key + "_ADDR", value.address))
-            if value.type.has_okEH():
-                num_endpoints += 1
-
-        with open(config_file, "w") as fp:
-            fp.write(header_comment + "\n")
-            fp.write(header_guard_begin + "\n")
-            fp.write("\n// Number of bytes of data FIFO\n")
-            fp.write(data_bytes + "\n")
-            fp.write("\n// Address map\n")
-            fp.write("\n".join(addr_map_list) + "\n")
-            fp.write("\n// Number of endpoints requiring `okEH`" + "\n")
-            fp.write("`define NUM_ENDPOINTS {}".format(num_endpoints) + "\n")
-            fp.write("\n" + header_guard_end + "\n")
-
-        self.logger.info("Successfully generate the RTL config file to `{}`.".format(config_file))

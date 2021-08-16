@@ -45,7 +45,10 @@ assign itf_sel = itf_sel_x[0];
 wire [64:0] okEHChipSTA;
 wire [31:0] sta_chip;                     //---- Bit [0],[1] is status from chip ----//
 assign sta_chip = {30'd0, sta_wei, sta_act}; // 2'b10 Write weight done; 2'b11 input trigger done
-
+// `okWireOut` connections
+wire [64:0] okEHFifobEmpty;
+wire [31:0] FIFOB_empty_x;
+assign FIFOB_empty_x = {31'd0, FIFOB_empty};
 // `okTriggerIn` connections
 wire [31:0] spi_config;                   //---- Bit [0] is SPI Master Config ----//
 
@@ -68,8 +71,8 @@ wire                     FIFOA_empty;     // FIFO empty
 wire                     FIFOA_full;
 wire [31:0]              FIFOB_IN;        // data write into fifo
 wire                     FIFOB_wen;       // FIFO B Write enable
-wire                     FIFOB_full;
 wire                     FIFOB_empty;
+wire                     FIFOB_full;
 // -----------------------------------------------------------------------------
 // Assign on-board LED
 // -----------------------------------------------------------------------------
@@ -99,7 +102,7 @@ okHost hostIF(
 // Instantiation of `okWireOR` to match the number of endpoints in your design
 // -----------------------------------------------------------------------------
 okWireOR #(.N(`NUM_ENDPOINTS)) wireOR (okEH, okEHx);
-assign okEHx = {okEHChipSTA, okEHFIFOAIn, okEHFIFOBOut};
+assign okEHx = {okEHChipSTA, okEHFifobEmpty, okEHFIFOAIn, okEHFIFOBOut};
 // -----------------------------------------------------------------------------
 // Instantiation of `okWireIn`
 // -----------------------------------------------------------------------------
@@ -124,6 +127,13 @@ okWireOut wireOutStaChip(
     .okEH(okEHChipSTA),
     .ep_addr(`STA_CHIP_ADDR),
     .ep_datain(sta_chip)
+);
+
+okWireOut wireOutFifobEmpty(
+    .okHE(okHE), 
+    .okEH(okEHFifobEmpty),
+    .ep_addr(`FIFOB_EMPTY_ADDR),
+    .ep_datain(FIFOB_empty_x)
 );
 // -----------------------------------------------------------------------------
 // Instantiation of `okTriggerIn`
@@ -186,29 +196,29 @@ FIFO_IN FIFO_Output_B (
 );
 
 fpga_top u_fpga_top(
-    .CLK         (CLK_6P4M    ),
-    .rst_n       (sw_rst[0]   ),
-    .FIFOA_OUT   (FIFOA_OUT   ),
-    .FIFOA_ren   (FIFOA_ren   ),
-    .FIFOA_empty (FIFOA_empty ),
-    .FIFOB_IN    (FIFOB_IN    ),
-    .FIFOB_wen   (FIFOB_wen   ),
-    .sta_wei     (sta_wei     ),
-    .sta_act     (sta_act     ),
-    .itf_sel     (itf_sel     ),
+    .CLK         (CLK_6P4M     ),
+    .rst_n       (~sw_rst[0]   ), //reset (active low)
+    .FIFOA_OUT   (FIFOA_OUT    ),
+    .FIFOA_ren   (FIFOA_ren    ),
+    .FIFOA_empty (FIFOA_empty  ),
+    .FIFOB_IN    (FIFOB_IN     ),
+    .FIFOB_wen   (FIFOB_wen    ),
+    .sta_wei     (sta_wei      ),
+    .sta_act     (sta_act      ),
+    .itf_sel     (itf_sel      ),
     .spi_config  (spi_config[0]),
-    .i2c_scl     (i2c_scl     ),
-    .i2c_sda     (i2c_sda     ),
-    .spi_sck     (spi_sck     ),
-    .spi_mosi    (spi_mosi    ),
-    .spi_miso    (spi_miso    ),
-    .spi_cs      (spi_cs      )
+    .i2c_scl     (i2c_scl      ),
+    .i2c_sda     (i2c_sda      ),
+    .spi_sck     (spi_sck      ),
+    .spi_mosi    (spi_mosi     ),
+    .spi_miso    (spi_miso     ),
+    .spi_cs      (spi_cs       )
 );
 
 
 chip_top u_chip_top(
     .CLK      (CLK_6P4M ),
-    .rst_n    (sw_rst[0]),
+    .rst_n    (~sw_rst[0]), //reset (active low)
     .itf_sel  (itf_sel  ),
     .i2c_scl  (i2c_scl  ),
     .i2c_sda  (i2c_sda  ),
