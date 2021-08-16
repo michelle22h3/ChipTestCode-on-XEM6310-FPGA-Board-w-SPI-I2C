@@ -3,7 +3,7 @@ This is the top-level program.
 """
 
 import os
-import subprocess
+# import subprocess
 import sys
 import time
 
@@ -28,18 +28,13 @@ def run_host(fpga_tester, args):
     fpga_tester.reset()
     fpga_tester.itf_selection(0) # 0 means select I2C
 
-    # Send activation input and initiate output data transfer state
-    fpga_tester.send_one_byte(onebyte_waddr, onebyte_wdata)
-
-    Ready_to_read = False
-    while not Ready_to_read:
-        fpga_tester.logger.info("Sleep 1 second to wait fifo_b not empty")
-        time.sleep(1)
-        Ready_to_read = fpga_tester.fifob_not_empty()
-    Ready_to_read = False
-
-    # Read the calculated data
-    onebyte_raddr, onebyte_rdata = fpga_tester.receive_one_byte()
+    # Write 1 byte data of itf_reg
+    fpga_tester.fpga_write_byte(onebyte_waddr, onebyte_wdata)
+    # Write 1 byte data of itf_reg
+    fpga_tester.fpga_read_byte(onebyte_waddr)
+    time.sleep(1)
+    print("wait 1 second for fetching data")
+    onebyte_raddr, onebyte_rdata = fpga_tester.fpga_load_out()
     print(onebyte_raddr)
     print(onebyte_rdata)
 
