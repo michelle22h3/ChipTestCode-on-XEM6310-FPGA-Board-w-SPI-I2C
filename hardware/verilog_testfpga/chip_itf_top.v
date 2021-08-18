@@ -16,7 +16,7 @@ module chip_itf_top(
     input  wire                     itf_sel          ,// select between I2C and SPI
     // Interface with I2C Slave
     input  wire                     i2c_scl          ,
-    input  wire                     i2c_sda          , // i2c_sda do out of the chip
+    inout  wire                     i2c_sda          , // i2c_sda do out of the chip
     // Interface with SPI Slave
     input  wire                     spi_cs           ,
     input  wire                     spi_sck          ,

@@ -13,7 +13,7 @@ class CmdlineParser:
         # Add supported cmdline options below. Check `add_argument` API description in the following link:
         # https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser.add_argument
 
-        self.parser.add_argument("--fpga_bit", type=str, default="../ise_workspace/fpgatop.bit",
+        self.parser.add_argument("--fpga_bit", type=str, default="/d/FPGA_BITFILE/fpga_top_w_chip.bit",
                                  help="Path of FPGA bit stream file.")
         self.parser.add_argument("--log_level", type=str, default="INFO",
                                  choices=['NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],

@@ -109,6 +109,9 @@ class FPGATester:
         self.write_trigger_in(self.ADDR_MAP["SPI_CONFIG"].address, 0) 
         self.logger.info("SPI Master is configured")
 
+    def led_cntl(self, value_led):
+        self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value_led, mask=0xFE)
+
     def itf_selection(self, value):
         # Input: integer value
         """Selection of I2C and SPI, 0x00(0) means I2C and 0x01(1) means SPI"""
@@ -140,11 +143,12 @@ class FPGATester:
         self.send_one_byte_wr(raddr, 0, 0)
 
     def fpga_load_out(self):
-        fifob_out_data = bytearray(4)
+        fifob_odata = bytearray(4)
         self.logger.info("Receiving 1 byte data from FPGA FIFOB.")
-        self.read_pipe_out(self.ADDR_MAP["FIFOB_OUT_DATA"].address, fifob_out_data)
-        raddr = fifob_out_data[2]
-        rdata = fifob_out_data[3]
+        self.read_pipe_out(self.ADDR_MAP["FIFOB_OUT_DATA"].address, fifob_odata)
+        self.logger.info(fifob_odata)
+        raddr = fifob_odata[2]  
+        rdata = fifob_odata[3]
         return raddr, rdata
 
     # ----------------- Write and read Endpoints ------------------ #

@@ -315,7 +315,7 @@ always @(posedge CLK or negedge rst_n) begin
                 spim_psel       <= 1'b1;         // Selection
                 spim_pwrite     <= 1'b1;         // Write CONFIG into spi slave
                 spim_paddr      <= 8'h02;        // SPCR_ADDR
-                spim_pwdata     <= 8'hd1;    // Addr to be transferred
+                spim_pwdata     <= 8'hd2;    // Addr to be transferred
             end
 
             STATE_Config: begin

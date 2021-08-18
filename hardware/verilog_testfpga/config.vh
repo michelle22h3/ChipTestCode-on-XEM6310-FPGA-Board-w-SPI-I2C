@@ -1,6 +1,7 @@
-// Address map
 
-// WireIn
+`ifndef __CONFIG_VH__
+`define __CONFIG_VH__
+
 `define SW_RST_ADDR 8'h07
 `define ITF_SEL_ADDR 8'h17
 
@@ -18,6 +19,7 @@
 // Number of endpoints requiring `okEH`
 `define NUM_ENDPOINTS 4
 
+`endif
 
 
 

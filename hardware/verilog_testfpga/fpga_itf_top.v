@@ -4,7 +4,7 @@ module fpga_itf_top(
     input wire rst_n,
     // ---- I2C Interface to chip ---- //
     output wire scl,
-    output wire csda,
+    inout wire csda,
     // ---- SPI Interface to chip ---- //
     output wire spi_sck,
     output wire spi_mosi,

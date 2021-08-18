@@ -26,14 +26,18 @@ def run_host(fpga_tester, args):
 
     # Main procedure for FPGA
     fpga_tester.reset()
-    fpga_tester.itf_selection(0) # 0 means select I2C
-
+    fpga_tester.itf_selection(1) # 0 means select I2C
+    print (fpga_tester.fifob_empty())
+    fpga_tester.led_cntl(0xFF)
+    time.sleep(2)
     # Write 1 byte data of itf_reg
     fpga_tester.fpga_write_byte(onebyte_waddr, onebyte_wdata)
     # Write 1 byte data of itf_reg
     fpga_tester.fpga_read_byte(onebyte_waddr)
+    
     time.sleep(1)
-    print("wait 1 second for fetching data")
+    print("wait for fetching data")
+    print (fpga_tester.fifob_empty())
     onebyte_raddr, onebyte_rdata = fpga_tester.fpga_load_out()
     print(onebyte_raddr)
     print(onebyte_rdata)

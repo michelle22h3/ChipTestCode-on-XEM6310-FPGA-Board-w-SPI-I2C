@@ -20,7 +20,7 @@ module fpga_top (
     input  wire                     spi_config,      
     // ---- I2C Interface to chip ---- //
     output wire i2c_scl,
-    output wire i2c_sda,
+    inout wire i2c_sda,
     // ---- SPI Interface to chip ---- //
     output wire spi_sck,
     output wire spi_mosi,

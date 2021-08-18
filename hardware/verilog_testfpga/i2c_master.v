@@ -29,7 +29,7 @@ reg  [31:0]   addr_d1;
 reg  [31:0]   wr_data_d1;
 reg           valid_d1;
 reg  [6:0]    slave_addr_d1;
-reg  [3:0]    hclk_cnt;
+reg  [7:0]    hclk_cnt;
 
 parameter BYTE_IDLE = 0;
 parameter BYTE_START = 1;
@@ -81,7 +81,7 @@ wire          data_cnt_min;
 `endif
 
 always@(*) begin     
-    cycle_done = (cycle == 2'b11) & (hclk_cnt==4'b1111);
+    cycle_done = (cycle == 2'b11) & (hclk_cnt==7'b1111111);
     //stall = valid & ~((state == BYTE_IDLE) & cycle_done);
     //stall = (state != BYTE_IDLE) | (valid & (state == BYTE_IDLE) & !cycle_done);
     stall = (state != BYTE_IDLE);
@@ -104,7 +104,7 @@ always@(posedge hclk or negedge hresetn) begin
 
         hclk_cnt <= (state == BYTE_IDLE) ? 0 : hclk_cnt + 1;
 
-        if ((valid | (state != BYTE_IDLE)) & (hclk_cnt==4'b1111))
+        if ((valid | (state != BYTE_IDLE)) & (hclk_cnt==7'b1111111))
             cycle <= cycle + 1;    
         
         if ((btype == BIT_READ) & (cycle == 1))
