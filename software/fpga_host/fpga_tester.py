@@ -46,11 +46,6 @@ class FPGATester:
         ("FIFOB_OUT_DATA", AddrMapEntry(EndpointType.PIPE_OUT, 0xA7)),    # data from FIFO_B
     ])
 
-    # Expected data bytes of each tensor
-    ACT_IN_BYTES = 64
-    WEIGHT_BYTES = 512
-    ACT_OUT_BYTES = 64
-
     def __init__(self, fpga_bit_file, debug=False):
         """
         Constructor of FPGA tester.
@@ -92,7 +87,7 @@ class FPGATester:
             if not self.debug:
                 return None
 
-        if device.IsFrontPanelEnabled() != SUCCESS:
+        if device.IsFrontPanelEnabled() != SUCCESS: # This line is always showed on during testing
             self.logger.critical("okHostInterface is not installed in the FPGA configuration.")
             if not self.debug:
                 return None
@@ -102,15 +97,17 @@ class FPGATester:
     def reset(self):
         """Reset FPGA hardware."""
         # Generate a falling edge @ sw reset address (write 1 first then 0)
-        self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x01)
-        self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x00)
+        self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x01, mask=0x01)
+        self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x00, mask=0x01)
         self.logger.info("Reset FPGA System")
+
+    def config_spimaster(self):
         # Configure SPI Master using a config trigger signal
         self.write_trigger_in(self.ADDR_MAP["SPI_CONFIG"].address, 0) 
         self.logger.info("SPI Master is configured")
 
     def led_cntl(self, value_led):
-        self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value_led, mask=0xFE)
+        self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value_led, mask=0x3E)
 
     def itf_selection(self, value):
         # Input: integer value
@@ -133,7 +130,7 @@ class FPGATester:
         self.write_pipe_in(self.ADDR_MAP["FIFOA_IN_DATA"].address, four_byte)
     
     def fpga_write_byte(self, waddr, wdata):
-        self.logger.info("Writing 1 byte data to itf_reg")
+        self.logger.info("Writing 1 byte data to itf_reg, Addr:{} and Data:{}" .format(waddr,wdata))
         self.send_one_byte_wr(waddr, wdata, 1) 
         # w_or_r = 1 means writing data into itf_reg of this address
 
