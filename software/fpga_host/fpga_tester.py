@@ -87,7 +87,7 @@ class FPGATester:
             if not self.debug:
                 return None
 
-        if device.IsFrontPanelEnabled() != SUCCESS: # This line is always showed on during testing
+        if device.IsFrontPanelEnabled() != True: # This line is always showed on during testing
             self.logger.critical("okHostInterface is not installed in the FPGA configuration.")
             if not self.debug:
                 return None
@@ -112,7 +112,7 @@ class FPGATester:
     def itf_selection(self, value):
         # Input: integer value
         """Selection of I2C and SPI, 0x00(0) means I2C and 0x01(1) means SPI"""
-        self.write_wire_in(self.ADDR_MAP["ITF_SEL"].address, value)
+        self.write_wire_in(self.ADDR_MAP["ITF_SEL"].address, value, mask=0x01)
 
     def fifob_empty(self):
         """Find out if FIFO_B is empty, return True or False"""
@@ -126,18 +126,18 @@ class FPGATester:
         four_byte = bytearray(to_be_sent)
         """Data to be pipe in is of 4 byte"""
         assert len(four_byte) == 4
-        self.logger.info("sub-process:Send data into FIFO_A")
+        self.logger.info("sub-process:Send data into FIFO_A:{}".format(four_byte))
         self.write_pipe_in(self.ADDR_MAP["FIFOA_IN_DATA"].address, four_byte)
     
     def fpga_write_byte(self, waddr, wdata):
         self.logger.info("Writing 1 byte data to itf_reg, Addr:{} and Data:{}" .format(waddr,wdata))
-        self.send_one_byte_wr(waddr, wdata, 1) 
+        self.send_one_byte_wr(waddr, wdata, 0xFF) 
         # w_or_r = 1 means writing data into itf_reg of this address
 
     def fpga_read_byte(self, raddr):
         """Receive one byte data from FIFO_B"""
         self.logger.info("Fetching 1 byte data from itf_reg...")
-        self.send_one_byte_wr(raddr, 0, 0)
+        self.send_one_byte_wr(raddr, 0xFF, 0x00)
 
     def fpga_load_out(self):
         fifob_odata = bytearray(4)

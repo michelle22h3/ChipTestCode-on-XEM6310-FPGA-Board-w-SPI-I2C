@@ -1,4 +1,4 @@
-module FPGA_top_w_chip (
+module FPGA_top_testfifo (
     input  wire [4:0] okUH,      // Host interface input signals
     output wire [2:0] okHU,      // Host interface output signals
     inout  wire [31:0] okUHU,    // Host interface bidirectional signals
@@ -74,10 +74,11 @@ wire [31:0]              FIFOB_IN;        // data write into fifo
 wire                     FIFOB_wen;       // FIFO B Write enable
 wire                     FIFOB_empty;
 wire                     FIFOB_full;
+wire                     Triggered;
 // -----------------------------------------------------------------------------
 // Assign on-board LED
 // -----------------------------------------------------------------------------
-assign led = ~ {sw_rst[5:0], 1'b1, 1'b0};  // 0 means no light
+assign led = ~ {sw_rst[5:0], Triggered, 1'b1};  // 0 means no light
 // -----------------------------------------------------------------------------
 // Instantiation of host interface
 // -----------------------------------------------------------------------------
@@ -186,7 +187,7 @@ FIFO_IN FIFO_Input_A (
 // -----------------------------------------------------------------------------
 FIFO_IN FIFO_Output_B (
 .rst        (sw_rst[0]),                // FIFO reset (active high)
-.wr_clk     (CLK50M),                 // FIFO write side clock domain
+.wr_clk     (CLK50M),                   // FIFO write side clock domain
 .rd_clk     (okClk),                    // FIFO read side clock domain
 .din        (FIFOB_IN),                 // FIFO write data input
 .wr_en      (FIFOB_wen),                // FIFO write enable (active high)
@@ -197,39 +198,16 @@ FIFO_IN FIFO_Output_B (
 );
 
 
-fpga_top u_fpga_top(
-    .CLK         (CLK50M     ),
-    .rst_n       (~sw_rst[0]   ), //reset (active low)
-    .FIFOA_OUT   (FIFOA_OUT    ),
-    .FIFOA_ren   (FIFOA_ren    ),
-    .FIFOA_empty (FIFOA_empty  ),
-    .FIFOB_IN    (FIFOB_IN     ),
-    .FIFOB_wen   (FIFOB_wen    ),
-    .sta_wei     (sta_wei      ),
-    .sta_act     (sta_act      ),
-    .itf_sel     (itf_sel      ),
-    .spi_config  (spi_config[0]),
-    .i2c_scl     (i2c_scl      ),
-    .i2c_sda     (i2c_sda      ),
-    .spi_sck     (spi_sck      ),
-    .spi_mosi    (spi_mosi     ),
-    .spi_miso    (spi_miso     ),
-    .spi_cs      (spi_cs       )
+fpga_top_test u_fpga_top_test(
+    .CLK         (CLK50M         ),
+    .rst_n       (sw_rst[0]      ),
+    .FIFOA_OUT   (FIFOA_OUT   ),
+    .FIFOA_ren   (FIFOA_ren   ),
+    .FIFOA_empty (FIFOA_empty ),
+    .FIFOB_IN    (FIFOB_IN    ),
+    .FIFOB_wen   (FIFOB_wen   ),
+    .Triggered   (Triggered   )
 );
 
-
-chip_top u_chip_top(
-    .CLK      (CLK50M ),
-    .rst_n    (~sw_rst[0]), //reset (active low)
-    .itf_sel  (itf_sel  ),
-    .i2c_scl  (i2c_scl  ),
-    .i2c_sda  (i2c_sda  ),
-    .spi_cs   (spi_cs   ),
-    .spi_sck  (spi_sck  ),
-    .spi_mosi (spi_mosi ),
-    .spi_miso (spi_miso ),
-    .sta_wei  (  ),
-    .sta_act  (  )
-);
     
 endmodule

@@ -63,7 +63,7 @@ localparam  STATE_IDLE            = 4'd0,   // Idle state
             STATE_ITF_Read        = 4'd7,   // Wait for ITF to read data back
             STATE_ReadITFOut      = 4'd8,   // Read data transmitted back from ITF
             STATE_WriteFIFOB      = 4'd9,   // Write ITF data into FIFOB 
-            STATE_Occypy10        = 4'd10,
+            STATE_Occupy10        = 4'd10,
             STATE_Occupy11        = 4'd11,
             STATE_Occupy12        = 4'd12,
             STATE_Occupy13        = 4'd13,
@@ -140,7 +140,7 @@ always @(*)begin
             state_tx_next   = STATE_IDLE;
         end
         
-        STATE_Occypy10: state_tx_next   = STATE_IDLE;
+        STATE_Occupy10: state_tx_next   = STATE_IDLE;
         STATE_Occupy11: state_tx_next   = STATE_IDLE;
         STATE_Occupy12: state_tx_next   = STATE_IDLE;
         STATE_Occupy13: state_tx_next   = STATE_IDLE;

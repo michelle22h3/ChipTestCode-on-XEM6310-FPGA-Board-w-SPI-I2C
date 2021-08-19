@@ -21,15 +21,15 @@ DEBUG = True  # Knob to bypass the error w/o FPGA
 def run_host(fpga_tester, args):
     """Program to run the host python program."""
     # Generate synthetic data for test (random here)
-    onebyte_waddr = 0x03
-    onebyte_wdata = 0xAB
+    onebyte_waddr = int(0x03)
+    onebyte_wdata = int(0xAB)
 
     # Main procedure for FPGA
     fpga_tester.reset()
     time.sleep(1)
     fpga_tester.config_spimaster()
 
-    fpga_tester.itf_selection(0) # 0 means select I2C
+    fpga_tester.itf_selection(1) # 0 means select I2C
     print (fpga_tester.fifob_empty())
     fpga_tester.led_cntl(0x3E)
     time.sleep(5)
