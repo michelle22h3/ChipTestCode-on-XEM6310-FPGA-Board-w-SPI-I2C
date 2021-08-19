@@ -1,7 +1,6 @@
 """
 This module exports the FPGA tester to communicate between host end (PC) and FPGA.
 """
-
 import getpass
 import logging
 import sys
@@ -45,6 +44,8 @@ class FPGATester:
         ("FIFOA_IN_DATA", AddrMapEntry(EndpointType.PIPE_IN, 0x87)),    # data into FIFO_A
         ("FIFOB_OUT_DATA", AddrMapEntry(EndpointType.PIPE_OUT, 0xA7)),    # data from FIFO_B
     ])
+    MIN_BYTES = 16
+
 
     def __init__(self, fpga_bit_file, debug=False):
         """
@@ -147,6 +148,13 @@ class FPGATester:
         raddr = fifob_odata[2]  
         rdata = fifob_odata[3]
         return raddr, rdata
+    
+    def fifotest(self,fifodata):
+        self.write_pipe_in(self.ADDR_MAP["FIFOA_IN_DATA"].address, fifodata)
+
+    def fifotest_read(self,fifob_odata):    
+        self.read_pipe_out(self.ADDR_MAP["FIFOB_OUT_DATA"].address, fifob_odata)
+
 
     # ----------------- Write and read Endpoints ------------------ #
      # Write Wire In

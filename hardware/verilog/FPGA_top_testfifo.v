@@ -26,7 +26,7 @@ module FPGA_top_testfifo (
 // -----------------------------------------------------------------------------
 // System clock (Differential to single-ended buffer primitive by Xilinx)
 wire  CLK_100M;                  // process clock
-wire  CLK50M;                  // Divided clock
+// wire  CLK50M;                  // Divided clock
 
 IBUFGDS osc_clk(.O(CLK_100M), .I(sys_clkp), .IB(sys_clkn));
 // `okHost` endpoints
@@ -134,7 +134,7 @@ okWireOut wireOutFifobEmpty(
 okTriggerIn triggerInSpiConfig(
     .okHE(okHE), 
     .ep_addr(`SPI_CONFIG_ADDR),
-    .ep_clk(CLK50M),
+    .ep_clk(okClk),
     .ep_trigger(spi_config)
 );
 // -----------------------------------------------------------------------------
@@ -162,19 +162,18 @@ okPipeOut pipeOutActOut(
 // -----------------------------------------------------------------------------
 // Instantiation of Clk divider
 // -----------------------------------------------------------------------------
-CLK_DIV CLK_DIV_uut
-(
-.CLK_IN1    (CLK_100M),             // Clock in ports
-.CLK_OUT1   (CLK50M)               // Clock out port 
+// CLK_DIV CLK_DIV_uut
+// (
+// .CLK_IN1    (CLK_100M),             // Clock in ports
+// .CLK_OUT1   (CLK50M)               // Clock out port 
 
-);
+// );
 // -----------------------------------------------------------------------------
 // Instantiation of input FIFO
 // -----------------------------------------------------------------------------
 FIFO_IN FIFO_Input_A (
 .rst        (sw_rst[0]),                // FIFO reset (active high)
-.wr_clk     (okClk),                    // FIFO write side clock domain
-.rd_clk     (CLK50M),                 // FIFO read side clock domain
+.clk     (okClk),                    // FIFO write side clock domain
 .din        (fifoa_in_write_data),      // FIFO write data input
 .wr_en      (fifoa_in_write_en),        // FIFO write enable (active high)
 .rd_en      (FIFOA_ren),                // FIFO read enable (active high)
@@ -185,10 +184,9 @@ FIFO_IN FIFO_Input_A (
 // -----------------------------------------------------------------------------
 // Instantiation of output FIFO
 // -----------------------------------------------------------------------------
-FIFO_IN FIFO_Output_B (
+FIFO_OUT FIFO_Output_B (
 .rst        (sw_rst[0]),                // FIFO reset (active high)
-.wr_clk     (CLK50M),                   // FIFO write side clock domain
-.rd_clk     (okClk),                    // FIFO read side clock domain
+.clk     (okClk),                       // FIFO write side clock domain
 .din        (FIFOB_IN),                 // FIFO write data input
 .wr_en      (FIFOB_wen),                // FIFO write enable (active high)
 .rd_en      (fifob_out_read_en),        // FIFO read enable (active high)
@@ -199,8 +197,8 @@ FIFO_IN FIFO_Output_B (
 
 
 fpga_top_test u_fpga_top_test(
-    .CLK         (CLK50M         ),
-    .rst_n       (sw_rst[0]      ),
+    .CLK         (okClk         ),
+    .rst_n       (~sw_rst[0]      ),
     .FIFOA_OUT   (FIFOA_OUT   ),
     .FIFOA_ren   (FIFOA_ren   ),
     .FIFOA_empty (FIFOA_empty ),

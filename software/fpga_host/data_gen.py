@@ -29,9 +29,11 @@ class DataGen:
         return cls.constant_array(size, 1)
 
     @classmethod
-    def list_2_bytearray(cls, data: list) -> bytearray:
-        """Helper to generate the byte array from the specified data."""
-        return bytearray(data)
+    def indir_writedata(cls, addr:int, msb_data: int, lsb_data: int) -> bytearray:
+        """Helper to generate the data for an indiect writing."""
+        byte_of_16 = [0, 1, 2, addr, 0, 1, 3, lsb_data, 0, 1, 4, msb_data, 0, 1, 1, 3]
+        return bytearray(byte_of_16)
+     
 
     @classmethod
     def random_array(cls, size: int) -> bytearray:
