@@ -3,8 +3,7 @@ This module export data generator to generate different data patterns for testin
 """
 
 import random
-
-
+import os
 class DataGen:
 
     @classmethod
@@ -36,33 +35,27 @@ class DataGen:
      
 
     @classmethod
-    def random_array(cls, size: int) -> bytearray:
+    def random_array(cls, size: int):
         """
         Helper to generate the data array with the random number in the array.
         :param size: number of bytes in the result.
         :return: the generate data byte array.
         """
         assert size > 0, "Invalid size provided."
-        random_list = [random.randint(0, 255) for _ in range(size)]
+        random_list = [random.randint(0, 15) for _ in range(size)]
         return bytearray(random_list)
 
     @classmethod
-    def image_2_bytearray(cls, image_file: str) -> bytearray:
+    def write_byte(cls, addr:int, data:int):
         """
-        Helper to generate the data bytearray with the given image file.
-        :param image_file: file path of the image to be converted.
-        :return: the data bytearray of the image.
+        :return: the generate a 4 byte data byte array.
         """
-        raise NotImplementedError("TODO...")
+        assert 0 < addr < 6 and 0 <= data <= 255, "Invalid size provided."
+        w_four_byte = [0, 1, addr, data]
+        return bytearray(w_four_byte)
 
-    @classmethod
-    def gen_mem_init(cls, data: bytearray, mem_init_file: str):
-        """
-        Helper to generate the verilog memory initial file for the specified data.
-        :param data: the specified bytearray data to be generated.
-        :param mem_init_file: file name for memory initialization.
-        """
-        assert type(data) == bytearray, "Unexpected type for the specified data."
-        with open(mem_init_file, "w") as fp:
-            for num in data:
-                fp.write("{:02x} // {}\n".format(num, num))  # Write data in hex with decimal as comment
+    # @classmethod
+    # def indir_write(cls, addr:int, data:int):
+
+    
+

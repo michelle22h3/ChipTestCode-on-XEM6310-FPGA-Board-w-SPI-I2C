@@ -173,7 +173,7 @@ okPipeOut pipeOutActOut(
 // -----------------------------------------------------------------------------
 FIFO_IN FIFO_Input_A (
 .rst        (sw_rst[0]),                // FIFO reset (active high)
-.clk     (okClk),                    // FIFO write side clock domain
+.clk        (okClk),                    // FIFO write side clock domain
 .din        (fifoa_in_write_data),      // FIFO write data input
 .wr_en      (fifoa_in_write_en),        // FIFO write enable (active high)
 .rd_en      (FIFOA_ren),                // FIFO read enable (active high)

@@ -44,8 +44,8 @@ class FPGATester:
         ("FIFOA_IN_DATA", AddrMapEntry(EndpointType.PIPE_IN, 0x87)),    # data into FIFO_A
         ("FIFOB_OUT_DATA", AddrMapEntry(EndpointType.PIPE_OUT, 0xA7)),    # data from FIFO_B
     ])
-    MIN_BYTES = 16
-
+    W_BYTES = 64
+    R_BYTES = 64
 
     def __init__(self, fpga_bit_file, debug=False):
         """

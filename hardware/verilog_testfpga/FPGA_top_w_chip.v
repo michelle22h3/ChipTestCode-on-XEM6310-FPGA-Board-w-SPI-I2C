@@ -5,20 +5,22 @@ module FPGA_top_w_chip (
     inout  wire okAA,            // Host interface bidirectional signal
     input  wire sys_clkn,        // System differential clock input (negative)
     input  wire sys_clkp,        // System differential clock input (positive)
-    output wire [7:0] led       // On board LED pins
+    output wire [7:0] led,       // On board LED pins
+    // ---- Serial Communication Interface ---- //
+    output wire i2c_scl ,        // I2C   
+    output wire i2c_sda_m ,
+    output wire i2c_sda_s,
+    output wire spi_sck ,        // SPI
+    output wire spi_mosi ,
+    output wire spi_miso ,
+    output wire spi_cs ,
+    output wire itf_sel ,        // Selcetion of interface
+    // ---- Control and status signals connected to chip ---- //
+    input wire  sta_wei,        // sta_wei = 1 after writing all weights
+    input wire  sta_act         // sta_act = 1 after input trigger
 
 );
-    // ---- Serial Communication Interface ---- //
-    wire i2c_scl ;         // I2C   
-    wire i2c_sda ;
-    wire spi_sck ;         // SPI
-    wire spi_mosi ;
-    wire spi_miso ;
-    wire spi_cs ;
-    wire itf_sel ;         // Selcetion of interface
-    // ---- Control and status signals connected to chip ---- //
-    wire  sta_wei = 1'b0 ;         // sta_wei = 1 after writing all weights
-    wire  sta_act = 1'b0 ;          // sta_act = 1 after input trigger
+
 
 `include "config.vh"
 // -----------------------------------------------------------------------------
@@ -26,7 +28,6 @@ module FPGA_top_w_chip (
 // -----------------------------------------------------------------------------
 // System clock (Differential to single-ended buffer primitive by Xilinx)
 wire  CLK_100M;                  // process clock
-wire  CLK50M;                  // Divided clock
 
 IBUFGDS osc_clk(.O(CLK_100M), .I(sys_clkp), .IB(sys_clkn));
 // `okHost` endpoints
@@ -161,19 +162,18 @@ okPipeOut pipeOutActOut(
 // -----------------------------------------------------------------------------
 // Instantiation of Clk divider
 // -----------------------------------------------------------------------------
-CLK_DIV CLK_DIV_uut
-(
-.CLK_IN1    (CLK_100M),             // Clock in ports
-.CLK_OUT1   (CLK50M)               // Clock out port 
+// CLK_DIV CLK_DIV_uut
+// (
+// .CLK_IN1    (CLK_100M),             // Clock in ports
+// .CLK_OUT1   (CLK50M)               // Clock out port 
 
-);
+// );
 // -----------------------------------------------------------------------------
 // Instantiation of input FIFO
 // -----------------------------------------------------------------------------
 FIFO_IN FIFO_Input_A (
 .rst        (sw_rst[0]),                // FIFO reset (active high)
-.wr_clk     (okClk),                    // FIFO write side clock domain
-.rd_clk     (CLK50M),                 // FIFO read side clock domain
+.clk        (okClk),                    // FIFO clock
 .din        (fifoa_in_write_data),      // FIFO write data input
 .wr_en      (fifoa_in_write_en),        // FIFO write enable (active high)
 .rd_en      (FIFOA_ren),                // FIFO read enable (active high)
@@ -184,10 +184,9 @@ FIFO_IN FIFO_Input_A (
 // -----------------------------------------------------------------------------
 // Instantiation of output FIFO
 // -----------------------------------------------------------------------------
-FIFO_IN FIFO_Output_B (
+FIFO_OUT FIFO_Output_B (
 .rst        (sw_rst[0]),                // FIFO reset (active high)
-.wr_clk     (CLK50M),                 // FIFO write side clock domain
-.rd_clk     (okClk),                    // FIFO read side clock domain
+.clk        (okClk),                    // FIFO clock 
 .din        (FIFOB_IN),                 // FIFO write data input
 .wr_en      (FIFOB_wen),                // FIFO write enable (active high)
 .rd_en      (fifob_out_read_en),        // FIFO read enable (active high)
@@ -198,7 +197,7 @@ FIFO_IN FIFO_Output_B (
 
 
 fpga_top u_fpga_top(
-    .CLK         (CLK50M     ),
+    .CLK         (okClk     ),
     .rst_n       (~sw_rst[0]   ), //reset (active low)
     .FIFOA_OUT   (FIFOA_OUT    ),
     .FIFOA_ren   (FIFOA_ren    ),
@@ -210,7 +209,7 @@ fpga_top u_fpga_top(
     .itf_sel     (itf_sel      ),
     .spi_config  (spi_config[0]),
     .i2c_scl     (i2c_scl      ),
-    .i2c_sda     (i2c_sda      ),
+    .i2c_sda     (i2c_sda_m    ),
     .spi_sck     (spi_sck      ),
     .spi_mosi    (spi_mosi     ),
     .spi_miso    (spi_miso     ),
@@ -219,11 +218,11 @@ fpga_top u_fpga_top(
 
 
 chip_top u_chip_top(
-    .CLK      (CLK50M ),
+    .CLK      (okClk ),
     .rst_n    (~sw_rst[0]), //reset (active low)
     .itf_sel  (itf_sel  ),
     .i2c_scl  (i2c_scl  ),
-    .i2c_sda  (i2c_sda  ),
+    .i2c_sda  (i2c_sda_s),
     .spi_cs   (spi_cs   ),
     .spi_sck  (spi_sck  ),
     .spi_mosi (spi_mosi ),

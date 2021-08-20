@@ -23,14 +23,13 @@ def run_host(fpga_tester, args):
     # Generate synthetic data for test (random here)
     # to_be_sent = [0, 0xAB, 0xCD, 0xEF]
     # data_waddr = bytearray(to_be_sent)
-    weight_data = DataGen.indir_writedata(0x02, 0xAB, 0XCD)
+    weight_data = DataGen.random_array(fpga_tester.W_BYTES)
     
-    weight_data_out = DataGen.full_zeros(fpga_tester.MIN_BYTES)
+    weight_data_out = DataGen.full_zeros(fpga_tester.R_BYTES)
     # Main procedure for FPGA
     fpga_tester.reset()
     fpga_tester.config_spimaster()
     
-
     fpga_tester.itf_selection(1) # 0 means select I2C
     print (fpga_tester.fifob_empty())
     fpga_tester.led_cntl(0x3E)
@@ -38,16 +37,15 @@ def run_host(fpga_tester, args):
     print(weight_data)
     fpga_tester.fifotest(weight_data)
     # Write 1 byte data of itf_reg
-    weight_data = DataGen.indir_writedata(0x02, 0xEF, 0XFF)
-    print(weight_data)
-    fpga_tester.fifotest(weight_data)
-
     time.sleep(1)
-    print("wait for fetching data")
     print (fpga_tester.fifob_empty())
-    fpga_tester.fifotest_read(weight_data_out)
+    print("wait for fetching data")
+    while not fpga_tester.fifob_empty():
+        fpga_tester.fifotest_read(weight_data_out)
+        print(weight_data_out)
     # onebyte_raddr, onebyte_rdata = fpga_tester.fpga_load_out()
-    print(weight_data_out)
+    print (fpga_tester.fifob_empty())
+    
     # print(onebyte_rdata)
 
 def main():
