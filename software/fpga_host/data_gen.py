@@ -46,16 +46,62 @@ class DataGen:
         return bytearray(random_list)
 
     @classmethod
-    def write_byte(cls, addr:int, data:int):
+    def write_byte(cls, addr:int, data:int) -> bytearray:
         """
         :return: the generate a 4 byte data byte array.
         """
-        assert 0 < addr < 6 and 0 <= data <= 255, "Invalid size provided."
+        assert 0 < addr <= 6 and 0 <= data <= 255, "Invalid size provided."
         w_four_byte = [0, 1, addr, data]
         return bytearray(w_four_byte)
 
-    # @classmethod
-    # def indir_write(cls, addr:int, data:int):
+    @classmethod
+    def read_byte(cls, addr:int) -> bytearray:
+        """
+        :return: the generate a 4 byte data byte array.
+        """
+        assert 0 < addr <= 6 , "Invalid addr provided."
+        r_four_byte = [0, 0, addr, 0]
+        return bytearray(r_four_byte)
 
+    @classmethod
+    def indir_write(cls, ind_addr:int, ind_data_msb:int, ind_data_lsb:int) -> bytearray:
+        """
+        :return: 4 x 4 = 16 byte array.
+        """
+        send_waddr = cls.write_byte(0x02, ind_addr)         # Send Address of inner reg
+        send_data_msb = cls.write_byte(0x04, ind_data_msb)  # Send msb of data
+        send_data_lsb = cls.write_byte(0x03, ind_data_lsb)  # Send lsb of data
+        send_w_oper = cls.write_byte(0x01, 0x03)            # Operation: Writing
+        send_waddr.extend(send_data_msb)
+        send_waddr.extend(send_data_lsb)
+        send_waddr.extend(send_w_oper)
+        return send_waddr
     
+    @classmethod
+    def indir_read(cls, ind_addr:int) -> bytearray:
+        """
+        :return:4 x 4 = 16 byte array.
+        """
+        send_raddr   = cls.write_byte(0x02, ind_addr)          # Send Address of inner reg
+        send_r_oper = cls.write_byte(0x01, 0x02)               # Operation: Reading
+        send_rmsb   = cls.read_byte(0x06)  
+        send_rlsb   = cls.read_byte(0x05)
+        send_raddr.extend(send_r_oper)
+        send_raddr.extend(send_rmsb)
+        send_raddr.extend(send_rlsb)
+        return send_raddr
+    
+    @classmethod
+    def test_write(cls) -> bytearray:
+        to_be_send =[0xAA,0x02,0x01,0x00,  0xAA,0x03,0x01,0x00,  0xAA,0x04,0x01,0x00 , 0xAA,0x05,0x01,0x00]
+        out_16byte=bytearray(to_be_send)
+        return out_16byte
 
+    @classmethod
+    def test_read(cls) -> bytearray:
+        to_be_send =[0x00,0x02,0x00,0x00,  0x00,0x03,0x00,0x00,  0x00,0x04,0x00,0x00 , 0x00,0x05,0x00,0x00]
+        out_16byte=bytearray(to_be_send)
+        return out_16byte
+
+
+        

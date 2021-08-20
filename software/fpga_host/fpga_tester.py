@@ -45,7 +45,7 @@ class FPGATester:
         ("FIFOB_OUT_DATA", AddrMapEntry(EndpointType.PIPE_OUT, 0xA7)),    # data from FIFO_B
     ])
     W_BYTES = 64
-    R_BYTES = 64
+    R_BYTES = 16
 
     def __init__(self, fpga_bit_file, debug=False):
         """
@@ -98,6 +98,7 @@ class FPGATester:
     def reset(self):
         """Reset FPGA hardware."""
         # Generate a falling edge @ sw reset address (write 1 first then 0)
+        self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x00, mask=0x01)
         self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x01, mask=0x01)
         self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x00, mask=0x01)
         self.logger.info("Reset FPGA System")
@@ -119,35 +120,6 @@ class FPGATester:
         """Find out if FIFO_B is empty, return True or False"""
         # True means fifob is not empty, false means fifob is empty
         return self.read_wire_out(self.ADDR_MAP["FIFOB_EMPTY"].address) == 1
-        
-    def send_one_byte_wr(self, saddr, sdata, w_or_r):
-        # Input: interger value
-        """Send the 1 byte data with address to the FIFO_A"""
-        to_be_sent = [0, w_or_r, saddr, sdata]
-        four_byte = bytearray(to_be_sent)
-        """Data to be pipe in is of 4 byte"""
-        assert len(four_byte) == 4
-        self.logger.info("sub-process:Send data into FIFO_A:{}".format(four_byte))
-        self.write_pipe_in(self.ADDR_MAP["FIFOA_IN_DATA"].address, four_byte)
-    
-    def fpga_write_byte(self, waddr, wdata):
-        self.logger.info("Writing 1 byte data to itf_reg, Addr:{} and Data:{}" .format(waddr,wdata))
-        self.send_one_byte_wr(waddr, wdata, 0xFF) 
-        # w_or_r = 1 means writing data into itf_reg of this address
-
-    def fpga_read_byte(self, raddr):
-        """Receive one byte data from FIFO_B"""
-        self.logger.info("Fetching 1 byte data from itf_reg...")
-        self.send_one_byte_wr(raddr, 0xFF, 0x00)
-
-    def fpga_load_out(self):
-        fifob_odata = bytearray(4)
-        self.logger.info("Receiving 1 byte data from FPGA FIFOB.")
-        self.read_pipe_out(self.ADDR_MAP["FIFOB_OUT_DATA"].address, fifob_odata)
-        self.logger.info(fifob_odata)
-        raddr = fifob_odata[2]  
-        rdata = fifob_odata[3]
-        return raddr, rdata
     
     def fifotest(self,fifodata):
         self.write_pipe_in(self.ADDR_MAP["FIFOA_IN_DATA"].address, fifodata)

@@ -20,30 +20,39 @@ DEBUG = True  # Knob to bypass the error w/o FPGA
 
 def run_host(fpga_tester, args):
     """Program to run the host python program."""
-    # Generate synthetic data for test (random here)
-    # to_be_sent = [0, 0xAB, 0xCD, 0xEF]
-    # data_waddr = bytearray(to_be_sent)
-    weight_data = DataGen.random_array(fpga_tester.W_BYTES)
-    
-    weight_data_out = DataGen.full_zeros(fpga_tester.R_BYTES)
+    # ----------------------------------------------------#  
     # Main procedure for FPGA
     fpga_tester.reset()
     fpga_tester.config_spimaster()
+    fpga_tester.itf_selection(0) # 0 means select I2C
+    fpga_tester.led_cntl(0x2E)
+    dataout = DataGen.full_zeros(fpga_tester.R_BYTES)
     
-    fpga_tester.itf_selection(1) # 0 means select I2C
-    print (fpga_tester.fifob_empty())
-    fpga_tester.led_cntl(0x3E)
-    # Write 1 byte data of itf_reg
-    print(weight_data)
-    fpga_tester.fifotest(weight_data)
-    # Write 1 byte data of itf_reg
+    # ----------------------------------------------------#  
+    # Generate synthetic data for test (random here)
+    write_dataA = DataGen.test_write()
+    write_dataB = DataGen.test_write()
+    write_dataC = DataGen.test_write()
+    write_dataD = DataGen.test_write()
+    write_dataA.extend(write_dataB)
+    write_dataA.extend(write_dataC)
+    write_dataA.extend(write_dataD)
+
+    print (write_dataA)
+ 
+    # Write
+    fpga_tester.fifotest(write_dataA)
+
+    read_dataA = DataGen.test_read()
+    fpga_tester.fifotest(read_dataA)
+
+    # Write
     time.sleep(1)
     print (fpga_tester.fifob_empty())
     print("wait for fetching data")
     while not fpga_tester.fifob_empty():
-        fpga_tester.fifotest_read(weight_data_out)
-        print(weight_data_out)
-    # onebyte_raddr, onebyte_rdata = fpga_tester.fpga_load_out()
+        fpga_tester.fifotest_read(dataout)
+        print(dataout)
     print (fpga_tester.fifob_empty())
     
     # print(onebyte_rdata)

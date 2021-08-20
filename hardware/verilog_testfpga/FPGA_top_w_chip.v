@@ -5,21 +5,19 @@ module FPGA_top_w_chip (
     inout  wire okAA,            // Host interface bidirectional signal
     input  wire sys_clkn,        // System differential clock input (negative)
     input  wire sys_clkp,        // System differential clock input (positive)
-    output wire [7:0] led,       // On board LED pins
+    output wire [7:0] led       // On board LED pins
     // ---- Serial Communication Interface ---- //
-    output wire i2c_scl ,        // I2C   
-    output wire i2c_sda_m ,
-    output wire i2c_sda_s,
-    output wire spi_sck ,        // SPI
-    output wire spi_mosi ,
-    output wire spi_miso ,
-    output wire spi_cs ,
-    output wire itf_sel ,        // Selcetion of interface
-    // ---- Control and status signals connected to chip ---- //
-    input wire  sta_wei,        // sta_wei = 1 after writing all weights
-    input wire  sta_act         // sta_act = 1 after input trigger
-
 );
+    wire i2c_scl ;        // I2C   
+    wire i2c_sda ;
+    wire spi_sck ;        // SPI
+    wire spi_mosi ;
+    wire spi_miso ;
+    wire spi_cs ;
+    wire itf_sel ;        // Selcetion of interface
+    // ---- Control and status signals connected to chip ---- //
+    wire  sta_wei;        // sta_wei = 1 after writing all weights
+    wire  sta_act ;        // sta_act = 1 after input trigger
 
 
 `include "config.vh"
@@ -134,7 +132,7 @@ okWireOut wireOutFifobEmpty(
 okTriggerIn triggerInSpiConfig(
     .okHE(okHE), 
     .ep_addr(`SPI_CONFIG_ADDR),
-    .ep_clk(CLK50M),
+    .ep_clk(okClk),
     .ep_trigger(spi_config)
 );
 // -----------------------------------------------------------------------------
@@ -209,7 +207,7 @@ fpga_top u_fpga_top(
     .itf_sel     (itf_sel      ),
     .spi_config  (spi_config[0]),
     .i2c_scl     (i2c_scl      ),
-    .i2c_sda     (i2c_sda_m    ),
+    .i2c_sda     (i2c_sda   ),
     .spi_sck     (spi_sck      ),
     .spi_mosi    (spi_mosi     ),
     .spi_miso    (spi_miso     ),
@@ -222,7 +220,7 @@ chip_top u_chip_top(
     .rst_n    (~sw_rst[0]), //reset (active low)
     .itf_sel  (itf_sel  ),
     .i2c_scl  (i2c_scl  ),
-    .i2c_sda  (i2c_sda_s),
+    .i2c_sda  (i2c_sda),
     .spi_cs   (spi_cs   ),
     .spi_sck  (spi_sck  ),
     .spi_mosi (spi_mosi ),
