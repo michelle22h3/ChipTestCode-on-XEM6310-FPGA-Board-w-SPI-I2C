@@ -121,7 +121,7 @@ class FPGATester:
         # True means fifob is not empty, false means fifob is empty
         return self.read_wire_out(self.ADDR_MAP["FIFOB_EMPTY"].address) == 1
     
-    def fifotest(self,fifodata):
+    def fifowtest(self,fifodata):
         self.write_pipe_in(self.ADDR_MAP["FIFOA_IN_DATA"].address, fifodata)
 
     def fifotest_read(self,fifob_odata):    

@@ -5,20 +5,19 @@ module FPGA_top_w_chip (
     inout  wire okAA,            // Host interface bidirectional signal
     input  wire sys_clkn,        // System differential clock input (negative)
     input  wire sys_clkp,        // System differential clock input (positive)
-    output wire [7:0] led       // On board LED pins
+    output wire [7:0] led,       // On board LED pins
+    output wire i2c_scl,        // I2C   
+    inout wire  i2c_sda,
+    output wire spi_sck,        // SPI
+    output wire spi_mosi,
+    input wire  spi_miso,
+    output wire spi_cs,
+    output wire itf_sel,        // Selcetion of interface
+    // ---- Control and status signals connected to chip ---- //
+    input wire  sta_wei,        // sta_wei = 1 after writing all weights
+    input wire  sta_act         // sta_act = 1 after input trigger
     // ---- Serial Communication Interface ---- //
 );
-    wire i2c_scl ;        // I2C   
-    wire i2c_sda ;
-    wire spi_sck ;        // SPI
-    wire spi_mosi ;
-    wire spi_miso ;
-    wire spi_cs ;
-    wire itf_sel ;        // Selcetion of interface
-    // ---- Control and status signals connected to chip ---- //
-    wire  sta_wei;        // sta_wei = 1 after writing all weights
-    wire  sta_act ;        // sta_act = 1 after input trigger
-
 
 `include "config.vh"
 // -----------------------------------------------------------------------------
@@ -76,7 +75,7 @@ wire                     FIFOB_full;
 // -----------------------------------------------------------------------------
 // Assign on-board LED
 // -----------------------------------------------------------------------------
-assign led = ~ {sw_rst[5:0], 1'b1, 1'b0};  // 0 means no light
+assign led = ~ {sw_rst[5:0], sta_wei, sta_act};  // 0 means no light
 // -----------------------------------------------------------------------------
 // Instantiation of host interface
 // -----------------------------------------------------------------------------
@@ -195,38 +194,22 @@ FIFO_OUT FIFO_Output_B (
 
 
 fpga_top u_fpga_top(
-    .CLK         (okClk     ),
+    .CLK         (okClk        ),
     .rst_n       (~sw_rst[0]   ), //reset (active low)
     .FIFOA_OUT   (FIFOA_OUT    ),
     .FIFOA_ren   (FIFOA_ren    ),
     .FIFOA_empty (FIFOA_empty  ),
     .FIFOB_IN    (FIFOB_IN     ),
     .FIFOB_wen   (FIFOB_wen    ),
-    .sta_wei     (sta_wei      ),
-    .sta_act     (sta_act      ),
     .itf_sel     (itf_sel      ),
     .spi_config  (spi_config[0]),
     .i2c_scl     (i2c_scl      ),
-    .i2c_sda     (i2c_sda   ),
+    .i2c_sda     (i2c_sda      ),
     .spi_sck     (spi_sck      ),
     .spi_mosi    (spi_mosi     ),
     .spi_miso    (spi_miso     ),
     .spi_cs      (spi_cs       )
 );
 
-
-chip_top u_chip_top(
-    .CLK      (okClk ),
-    .rst_n    (~sw_rst[0]), //reset (active low)
-    .itf_sel  (itf_sel  ),
-    .i2c_scl  (i2c_scl  ),
-    .i2c_sda  (i2c_sda),
-    .spi_cs   (spi_cs   ),
-    .spi_sck  (spi_sck  ),
-    .spi_mosi (spi_mosi ),
-    .spi_miso (spi_miso ),
-    .sta_wei  (  ),
-    .sta_act  (  )
-);
     
 endmodule

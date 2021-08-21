@@ -24,38 +24,42 @@ def run_host(fpga_tester, args):
     # Main procedure for FPGA
     fpga_tester.reset()
     fpga_tester.config_spimaster()
-    fpga_tester.itf_selection(0) # 0 means select I2C
+    fpga_tester.itf_selection(1) # 0 means select I2C
     fpga_tester.led_cntl(0x2E)
     dataout = DataGen.full_zeros(fpga_tester.R_BYTES)
     
     # ----------------------------------------------------#  
-    # Generate synthetic data for test (random here)
-    write_dataA = DataGen.test_write()
-    write_dataB = DataGen.test_write()
-    write_dataC = DataGen.test_write()
-    write_dataD = DataGen.test_write()
-    write_dataA.extend(write_dataB)
-    write_dataA.extend(write_dataC)
-    write_dataA.extend(write_dataD)
-
+    # Generate data and Writing Process
+    write_dataA = DataGen.indir_write(0x10, 0x0733)
     print (write_dataA)
- 
-    # Write
-    fpga_tester.fifotest(write_dataA)
+    fpga_tester.fifowtest(write_dataA)  # Write 16-bit data into \x10
 
-    read_dataA = DataGen.test_read()
-    fpga_tester.fifotest(read_dataA)
+    write_dataA = DataGen.indir_write(0x14, 0x77FF)
+    print (write_dataA)
+    fpga_tester.fifowtest(write_dataA)  # Write 16-bit data into \x14
+    # ----------------------------------------------------#  
+    # Generate data and Reading Process
+    read_dataA = DataGen.indir_read(0x10)
+    fpga_tester.fifowtest(read_dataA)  # Write command into FIFO
+    print (fpga_tester.fifob_empty())
+    fpga_tester.fifotest_read(dataout) # Read out data
+    print(dataout[0], dataout[4])
 
-    # Write
+    read_dataA = DataGen.indir_read(0x14)
+    fpga_tester.fifowtest(read_dataA)  # Write command into FIFO
+    print (fpga_tester.fifob_empty())
+    fpga_tester.fifotest_read(dataout) # Read out data
+    print(dataout[0], dataout[4])
+
     time.sleep(1)
-    print (fpga_tester.fifob_empty())
-    print("wait for fetching data")
-    while not fpga_tester.fifob_empty():
-        fpga_tester.fifotest_read(dataout)
-        print(dataout)
-    print (fpga_tester.fifob_empty())
+    # print (fpga_tester.fifob_empty())
+    # print("wait for fetching data")
+    # while not fpga_tester.fifob_empty():
+    #     fpga_tester.fifotest_read(dataout)
+    #     print(dataout)
+    #     print(dataout[0], dataout[4])
+    # print (fpga_tester.fifob_empty())
     
-    # print(onebyte_rdata)
 
 def main():
     args = CmdlineParser().parse()

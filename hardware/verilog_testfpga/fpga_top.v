@@ -12,9 +12,6 @@ module fpga_top (
     input  wire                     FIFOA_empty,     // FIFO empty
     output wire [31:0]              FIFOB_IN,        // data write into fifo
     output wire                     FIFOB_wen,       // FIFO B Write enable
-    // // Signals indicating operating state of chip
-    input  wire                     sta_wei,
-    input  wire                     sta_act,
     // Interface with WireIn
     input  wire                     itf_sel,         // Selection of itf 
     input  wire                     spi_config,      
