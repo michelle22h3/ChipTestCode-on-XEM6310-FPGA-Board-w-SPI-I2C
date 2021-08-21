@@ -94,7 +94,7 @@ class FPGATester:
                 return None
 
         return device
-    # ----------------------------------------------------#
+    # ------------------------------------------------------------- #
     def reset(self):
         """Reset FPGA hardware."""
         # Generate a falling edge @ sw reset address (write 1 first then 0)
@@ -121,15 +121,27 @@ class FPGATester:
         # True means fifob is not empty, false means fifob is empty
         return self.read_wire_out(self.ADDR_MAP["FIFOB_EMPTY"].address) == 1
     
-    # ----------------------------------------------------#
+    def chip_weight_write_finish(self):
+        """Update status of Writing weights of SRAM Array on-chip """
+        return self.read_wire_out(self.ADDR_MAP["STA_CHIP"].address) == 2
+
+    def chip_act_trigger_finish(self):
+        """Update status of Writing weights of SRAM Array on-chip """
+        return self.read_wire_out(self.ADDR_MAP["STA_CHIP"].address) == 3
+    
+    def chip_status_clear(self):
+        """Update status of chip status signal """
+        return self.read_wire_out(self.ADDR_MAP["STA_CHIP"].address) == 0
+    # ------------------------------------------------------------- #
     def fifotest_write(self,fifodata):
         self.write_pipe_in(self.ADDR_MAP["FIFOA_IN_DATA"].address, fifodata)
 
     def fifotest_read(self,fifob_odata):    
         self.read_pipe_out(self.ADDR_MAP["FIFOB_OUT_DATA"].address, fifob_odata)
 
-
+    # ------------------------------------------------------------- #
     # ----------------- Write and read Endpoints ------------------ #
+    # ------------------------------------------------------------- #
      # Write Wire In
     def write_wire_in(self, addr, value, mask=0x01):   
         """
