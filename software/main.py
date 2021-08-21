@@ -32,33 +32,26 @@ def run_host(fpga_tester, args):
     # Generate data and Writing Process
     write_dataA = DataGen.indir_write(0x10, 0x0733)
     print (write_dataA)
-    fpga_tester.fifowtest(write_dataA)  # Write 16-bit data into \x10
+    fpga_tester.fifotest_write(write_dataA)  # Write 16-bit data into \x10
 
     write_dataA = DataGen.indir_write(0x14, 0x77FF)
     print (write_dataA)
-    fpga_tester.fifowtest(write_dataA)  # Write 16-bit data into \x14
+    fpga_tester.fifotest_write(write_dataA)  # Write 16-bit data into \x14
     # ----------------------------------------------------#  
     # Generate data and Reading Process
     read_dataA = DataGen.indir_read(0x10)
-    fpga_tester.fifowtest(read_dataA)  # Write command into FIFO
+    fpga_tester.fifotest_write(read_dataA)  # Write command into FIFO
     print (fpga_tester.fifob_empty())
     fpga_tester.fifotest_read(dataout) # Read out data
     print(dataout[0], dataout[4])
 
     read_dataA = DataGen.indir_read(0x14)
-    fpga_tester.fifowtest(read_dataA)  # Write command into FIFO
+    fpga_tester.fifotest_write(read_dataA)  # Write command into FIFO
     print (fpga_tester.fifob_empty())
     fpga_tester.fifotest_read(dataout) # Read out data
     print(dataout[0], dataout[4])
 
     time.sleep(1)
-    # print (fpga_tester.fifob_empty())
-    # print("wait for fetching data")
-    # while not fpga_tester.fifob_empty():
-    #     fpga_tester.fifotest_read(dataout)
-    #     print(dataout)
-    #     print(dataout[0], dataout[4])
-    # print (fpga_tester.fifob_empty())
     
 
 def main():
