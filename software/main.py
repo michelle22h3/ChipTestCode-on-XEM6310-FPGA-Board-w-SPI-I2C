@@ -13,7 +13,7 @@ assert sys.version_info.major == 3 and sys.version_info.minor == 5, "OK FrontPan
 from fpga_host.cmd_parser import CmdlineParser
 from fpga_host.fpga_tester import FPGATester
 from fpga_host.logger import setup_logger
-from fpga_host.transmission_data import trans_data
+from fpga_host.transmission_data import TransData
 
 DEBUG = True  # Knob to bypass the error w/o FPGA
 
@@ -29,7 +29,7 @@ def main():
         sys.exit(1)
     # Reset FPGA host and logic
     
-    trans = trans_data (fpga_tester)
+    trans = TransData(fpga_tester)
     trans.reset_host()
     # trans.test_indirwr()
     trans.ind_write_reg(0x10,0x0733)
