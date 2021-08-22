@@ -11,48 +11,12 @@ import time
 assert sys.version_info.major == 3 and sys.version_info.minor == 5, "OK FrontPanel only complies with Python 3.5"
 
 from fpga_host.cmd_parser import CmdlineParser
-from fpga_host.data_gen import DataGen
 from fpga_host.fpga_tester import FPGATester
 from fpga_host.logger import setup_logger
+from fpga_host.transmission_data import trans_data
 
 DEBUG = True  # Knob to bypass the error w/o FPGA
 
-
-def run_host(fpga_tester, args):
-    """Program to run the host python program."""
-    # ----------------------------------------------------#  
-    # Main procedure for FPGA
-    fpga_tester.reset()
-    fpga_tester.config_spimaster()
-    fpga_tester.itf_selection(1) # 0 means select I2C
-    fpga_tester.led_cntl(0x2E)
-    dataout = DataGen.full_zeros(fpga_tester.R_BYTES)
-    
-    # ----------------------------------------------------#  
-    # Generate data and Writing Process
-    write_dataA = DataGen.indir_write(0x10, 0x0733)
-    print (write_dataA)
-    fpga_tester.fifotest_write(write_dataA)  # Write 16-bit data into \x10
-
-    write_dataA = DataGen.indir_write(0x14, 0x77FF)
-    print (write_dataA)
-    fpga_tester.fifotest_write(write_dataA)  # Write 16-bit data into \x14
-    # ----------------------------------------------------#  
-    # Generate data and Reading Process
-    read_dataA = DataGen.indir_read(0x10)
-    fpga_tester.fifotest_write(read_dataA)  # Write command into FIFO
-    print (fpga_tester.fifob_empty())
-    fpga_tester.fifotest_read(dataout) # Read out data
-    print(dataout[0], dataout[4])
-
-    read_dataA = DataGen.indir_read(0x14)
-    fpga_tester.fifotest_write(read_dataA)  # Write command into FIFO
-    print (fpga_tester.fifob_empty())
-    fpga_tester.fifotest_read(dataout) # Read out data
-    print(dataout[0], dataout[4])
-
-    time.sleep(1)
-    
 
 def main():
     args = CmdlineParser().parse()
@@ -63,8 +27,27 @@ def main():
     fpga_tester = FPGATester(args.fpga_bit, debug=DEBUG)
     if fpga_tester.device is None:
         sys.exit(1)
+    # Reset FPGA host and logic
+    
+    trans = trans_data (fpga_tester)
+    trans.reset_host()
+    # trans.test_indirwr()
+    trans.ind_write_reg(0x10,0x0733)
+    trans.ind_write_reg(0x14,0x77FF)
+    trans.ind_write_reg(0x24,0x4)
+    trans.ind_write_reg(0x28,0xF)
+    trans.ind_write_reg(0x2C,0x3)
+    trans.ind_write_reg(0x2C,0x3)
+    trans.ind_write_reg(0x30,0xDD)
+    trans.ind_write_reg(0x34,0xCC)
 
-    run_host(fpga_tester, args)
+    trans.ind_read_reg(0x10)
+    trans.ind_read_reg(0x14)
+    trans.pipeout_data(2)
+
+    # trans.write_weights(0xFFFFFFEEDDCCBBAABBCCDDEEFF998877665544332211)
+    # trans.write_activations(0x77665544332211542675)
+
 
 
 if __name__ == "__main__":

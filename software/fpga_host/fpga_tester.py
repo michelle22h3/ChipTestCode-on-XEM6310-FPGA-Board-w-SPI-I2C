@@ -133,10 +133,10 @@ class FPGATester:
         """Update status of chip status signal """
         return self.read_wire_out(self.ADDR_MAP["STA_CHIP"].address) == 0
     # ------------------------------------------------------------- #
-    def fifotest_write(self,fifodata):
+    def fifo_write(self,fifodata):
         self.write_pipe_in(self.ADDR_MAP["FIFOA_IN_DATA"].address, fifodata)
 
-    def fifotest_read(self,fifob_odata):    
+    def fifo_read(self,fifob_odata):    
         self.read_pipe_out(self.ADDR_MAP["FIFOB_OUT_DATA"].address, fifob_odata)
 
     # ------------------------------------------------------------- #

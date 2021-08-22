@@ -18,7 +18,7 @@ class DataGen:
         Generate proper data pattern for Writing 1 byte data into itf_reg
         """
         assert 0 < addr <= 6 and 0 <= data <= 255, "Invalid size provided."
-        w_four_byte = [data, addr, 1, 0]
+        w_four_byte = [data, addr, 1, 0] # data + addr + 1 (means write) + (arbitary value)
         return bytearray(w_four_byte)
 
     @classmethod
@@ -27,7 +27,7 @@ class DataGen:
         Generate proper data pattern for Reading 1 byte data into itf_reg
         """
         assert 0 < addr <= 6 , "Invalid addr provided."
-        r_four_byte = [0, addr, 0, 0]
+        r_four_byte = [0, addr, 0, 0] #(arbitary value) + addr + 0 (means read) + (arbitary value)
         return bytearray(r_four_byte)
 
     @classmethod
