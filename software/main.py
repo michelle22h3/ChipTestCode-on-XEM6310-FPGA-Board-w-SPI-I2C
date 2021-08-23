@@ -14,24 +14,26 @@ from fpga_host.cmd_parser import CmdlineParser
 from fpga_host.fpga_tester import FPGATester
 from fpga_host.logger import setup_logger
 from fpga_host.transmission_data import TransData
+from fpga_host.data_gen import DataGen
 
 DEBUG = True  # Knob to bypass the error w/o FPGA
 
 
 def main():
+    # ----------------------------------------------------#
     args = CmdlineParser().parse()
     # Config logger to have a pretty logging console
     setup_logger(FPGATester.__name__, args.log_level) 
-
     # Initialize FPGA tester and sanity check
     fpga_tester = FPGATester(args.fpga_bit, debug=DEBUG)
     if fpga_tester.device is None:
         sys.exit(1)
-    # Reset FPGA host and logic
+    # Initialize Data control module
     setup_logger('CIM_Process', logging.DEBUG)
     trans = TransData(fpga_tester)
+    # Reset FPGA host and logic
     trans.reset_host()
-    # trans.test_indirwr()
+    # ----------------------------------------------------#
     trans.ind_write_reg(0x10,0x0733)
     trans.ind_write_reg(0x14,0x77FF)
     trans.ind_write_reg(0x24,0x4)
@@ -44,9 +46,10 @@ def main():
     trans.ind_read_reg(0x10)
     trans.ind_read_reg(0x14)
     
-
-    # trans.write_weights(0xFFFFFFEEDDCCBBAABBCCDDEEFF998877665544332211)
-    # trans.write_activations(0x77665544332211542675)
+    weights_data = DataGen.array_fullff(512)
+    act_data = DataGen.array_random(32)
+    # trans.write_weights(weights_data)
+    # trans.write_activations(act_data)
     # trans.askfor_outputs()
     # outputdata = bytearray(80)
     # trans.get_outputs(outputdata)

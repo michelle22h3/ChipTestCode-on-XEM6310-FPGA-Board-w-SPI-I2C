@@ -5,13 +5,29 @@ This module export data generator to generate different data patterns for testin
 import random
 import os
 class DataGen:
-
+    # ----------------------------------------------------#
+    # Bytearray Data Generation 
+    # ----------------------------------------------------#
     @classmethod
     def full_zeros(cls, size: int):
         """Handy alias for full 0s constant array"""
         return bytearray(size)
-  
+    
+    def array_fullff(cls, size: int):
+        data = bytearray([255])
+        for _ in range(1, size):
+            data.append(255)
+        return data
+    
+    def array_random(cls, size: int):
+        data = bytearray([random.randint(0,255)])
+        for _ in range(1, size):
+            data.append(random.randint(0,255))
+        return data
 
+    # ----------------------------------------------------#
+    # Data Pattern transmitted to FIFO
+    # ----------------------------------------------------#
     @classmethod
     def write_byte(cls, addr:int, data:int):
         """
@@ -60,7 +76,10 @@ class DataGen:
         send_raddr.extend(send_rmsb)
         send_raddr.extend(send_rlsb)
         return send_raddr
-    
+
+    # ----------------------------------------------------#
+    # Test Pattern
+    # ----------------------------------------------------#
     @classmethod
     def test_write(cls):
         """"Write data into register 02, 03, 04: 0XBB, 0XCC, 0XDD"""
@@ -74,6 +93,6 @@ class DataGen:
         to_be_send =[0x00,0x02,0x00,0x00,  0x00,0x03,0x00,0x00,  0x00,0x04,0x00,0x00 , 0x00,0x05,0x00,0x00]
         out_16byte=bytearray(to_be_send)
         return out_16byte
-
+    # ----------------------------------------------------# 
 
         

@@ -3,7 +3,6 @@ import logging
 from fpga_host.data_gen import DataGen
 from fpga_host.logger import setup_logger
 class TransData:
-
     def __init__(self, fpga_tester):
         self.fpga_tester = fpga_tester
         
@@ -15,10 +14,10 @@ class TransData:
         """Call the functions to do reset and configuration."""
         self.fpga_tester.reset()
         self.fpga_tester.config_spimaster()
-        self.fpga_tester.itf_selection(1) # 0 means select I2C
-        self.fpga_tester.led_cntl(0x3E)
+        self.fpga_tester.itf_selection(1) # 0 means select I2C and 1 means SPI
+        self.fpga_tester.led_cntl(0x3E)   # LED Mask is 3E
     # ----------------------------------------------------#
-    # Indirect write and read of one inner register
+    # Indirect write and read of ONE inner register
     # ----------------------------------------------------#   
     def ind_write_reg(self, ind_addr:int, ind_data:int):
         """With an 8-b addr, 16-b data, perform an indirect writing process"""
@@ -44,11 +43,12 @@ class TransData:
     # ----------------------------------------------------#
     def write_weights(self, weights:int):
         """"Input: 4096-bit, 1-bit/w, in Bytearray type (one iterm stores 8 weights)"""
-        weights_256sets = weights.to_bytes(256, "big")
+        weights_256sets = weights.to_bytes(512, "big")
         self.logger.warning('Start Sending 4096 bit weight data to chip...')
         self.ind_write_reg(0x2C, 0x0001)
-        for i in range(256):
-            self.ind_write_reg(0x30, weights_256sets[i])
+        for i in range(0, 512, 2):
+            weights_2byte = int.from_bytes(weights_256sets[i:i+2], "big")
+            self.ind_write_reg(0x30, weights_2byte)
 
     # Return true if weight writing is finished
     def weight_w_finish(self): 
@@ -62,11 +62,12 @@ class TransData:
 
     def write_activations(self, activations:int):
         """Input: 256-bit, 4-bit/act, in Bytearray type (one iterm stores 2 activations)"""
-        activations_16sets = activations.to_bytes(16, "big")
+        activations_16sets = activations.to_bytes(32, "big")
         self.logger.warning('Start Sending 256 bit activation data to chip...')
         self.ind_write_reg(0x2C, 0x0002)
-        for j in range(16):
-            self.ind_write_reg(0x34, activations_16sets[j])
+        for j in range(0, 32, 2):
+            act_2bytes =int.from_bytes(activations_16sets[j:j+2], "big")
+            self.ind_write_reg(0x34, act_2bytes)
 
     # Return true if activation assertion is finished
     def act_w_finish(self): 
