@@ -1,7 +1,7 @@
 """
 This is the top-level program.
 """
-
+import logging
 import os
 # import subprocess
 import sys
@@ -28,7 +28,7 @@ def main():
     if fpga_tester.device is None:
         sys.exit(1)
     # Reset FPGA host and logic
-    
+    setup_logger('CIM_Process', logging.DEBUG)
     trans = TransData(fpga_tester)
     trans.reset_host()
     # trans.test_indirwr()
@@ -43,11 +43,14 @@ def main():
 
     trans.ind_read_reg(0x10)
     trans.ind_read_reg(0x14)
-    trans.pipeout_data(2)
+    
 
     # trans.write_weights(0xFFFFFFEEDDCCBBAABBCCDDEEFF998877665544332211)
     # trans.write_activations(0x77665544332211542675)
-
+    # trans.askfor_outputs()
+    # outputdata = bytearray(80)
+    # trans.get_outputs(outputdata)
+    # print(outputdata)
 
 
 if __name__ == "__main__":
