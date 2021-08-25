@@ -142,7 +142,7 @@ always @(posedge CLK)
       2'b00: clkcnt <= #1 'h1;    // fosc/4
       2'b01: clkcnt <= #1 'h7;    // fosc/16
       2'b10: clkcnt <= #1 'h1f;    // fosc/64
-      2'b11: clkcnt <= #1 'h3f;    // fosc/128
+      2'b11: clkcnt <= #1 'hff;    // fosc/255
     endcase
 
 // Generate clock enable signal for SCK (SPI Serial Clock)

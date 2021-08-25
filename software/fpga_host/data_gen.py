@@ -12,13 +12,22 @@ class DataGen:
     def full_zeros(cls, size: int):
         """Handy alias for full 0s constant array"""
         return bytearray(size)
-    
+
+    @classmethod
     def array_fullff(cls, size: int):
         data = bytearray([255])
         for _ in range(1, size):
             data.append(255)
         return data
+
+    @classmethod
+    def array_constant(cls, size: int, value: int):
+        data = bytearray([value])
+        for _ in range(1, size):
+            data.append(value)
+        return data
     
+    @classmethod
     def array_random(cls, size: int):
         data = bytearray([random.randint(0,255)])
         for _ in range(1, size):

@@ -3,6 +3,7 @@ This is the top-level program.
 """
 import logging
 import os
+import time
 # import subprocess
 import sys
 import time
@@ -33,27 +34,36 @@ def main():
     trans = TransData(fpga_tester)
     # Reset FPGA host and logic
     trans.reset_host()
+    trans.ind_write_reg(0x00,0x0003) # Clear status signal by default
     # ----------------------------------------------------#
-    trans.ind_write_reg(0x10,0x0733)
-    trans.ind_write_reg(0x14,0x77FF)
-    trans.ind_write_reg(0x24,0x4)
-    trans.ind_write_reg(0x28,0xF)
-    trans.ind_write_reg(0x2C,0x3)
-    trans.ind_write_reg(0x2C,0x3)
-    trans.ind_write_reg(0x30,0xDD)
-    trans.ind_write_reg(0x34,0xCC)
+    # trans.ind_write_reg(0x00,0x0000)
+    # trans.ind_write_reg(0x14,0x77FF)
+    # trans.ind_write_reg(0x24,0x4)
+    # trans.ind_write_reg(0x28,0xF)
+    # trans.ind_write_reg(0x2C,0x3)
+  
+    # trans.ind_read_reg(0x10)
+    # trans.ind_read_reg(0x14)
+    # trans.ind_read_reg(0x24)
+    # trans.ind_read_reg(0x28)
+    # trans.ind_read_reg(0x2C)
 
-    trans.ind_read_reg(0x10)
-    trans.ind_read_reg(0x14)
     
-    weights_data = DataGen.array_fullff(512)
+    trans.ind_read_reg(0x00)
+
+    weights_data = DataGen.array_random(512)
     act_data = DataGen.array_random(32)
-    # trans.write_weights(weights_data)
-    # trans.write_activations(act_data)
-    # trans.askfor_outputs()
-    # outputdata = bytearray(80)
-    # trans.get_outputs(outputdata)
-    # print(outputdata)
+    outputdata = DataGen.full_zeros(80)
+    trans.ind_read_reg(0x00)
+
+    trans.write_weights(weights_data)
+    trans.write_activations(act_data)
+    time.sleep(1)
+    trans.ind_read_reg(0x00)
+    trans.askfor_outputs()
+    time.sleep(1)
+    trans.get_outputs(outputdata)
+
 
 
 if __name__ == "__main__":
