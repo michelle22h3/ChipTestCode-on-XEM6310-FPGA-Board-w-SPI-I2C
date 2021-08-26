@@ -33,6 +33,13 @@ class DataGen:
         for _ in range(1, size):
             data.append(random.randint(0,255))
         return data
+    
+    @classmethod
+    def array_increment(cls, array_in: bytearray, size:int):
+        data_int=int.from_bytes(array_in, 'big')
+        data_int += 1
+        array_out = data_int.to_bytes(size, 'big')
+        return array_out
 
     # ----------------------------------------------------#
     # Data Pattern transmitted to FIFO
