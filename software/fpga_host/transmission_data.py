@@ -37,15 +37,15 @@ class TransData:
         dataout = DataGen.full_zeros(16)
         self.fpga_tester.fifo_read(dataout)
         data_twobyte = bytearray([dataout[0], dataout[4]])
-        self.logger.debug('Read out data: {}: {}\{} from Address {}'.format(data_twobyte,hex(dataout[0]),hex(dataout[4]), hex(ind_addr)))
+        self.logger.critical('Read out data: {}: {}\{} from Address {}'.format(data_twobyte,hex(dataout[0]),hex(dataout[4]), hex(ind_addr)))
     
     def read_status(self, ind_addr:int):
         """With an 8-b addr, 16-b data, perform an indirect writing process"""
         assert 0 <= ind_addr <=0xFF, "invalid inputs"
         r_pattern_16byte = DataGen.indir_read(ind_addr)
         self.fpga_tester.fifo_write(r_pattern_16byte)
-        while self.fpga_tester.fifob_empty() == True:
-            time.sleep(0.01)
+        # while self.fpga_tester.fifob_empty() == True:
+        time.sleep(0.01)
         self.logger.info('Data is fetched from inner reg to FIFO, start reading FIFO...')
         dataout = DataGen.full_zeros(16)
         self.fpga_tester.fifo_read(dataout)
@@ -56,8 +56,6 @@ class TransData:
             return True
         else:
             return False
-
-    
     
     def fetchoutput(self):
         time.sleep(1)
@@ -114,7 +112,7 @@ class TransData:
             self.fpga_tester.fifo_write(r_pattern_16byte)
             #self.logger.debug('Send out data pattern: {}'.format(r_pattern_16byte))
 
-    def get_outputs(self, outputs):
+    def get_outputs(self):
         """Get 640-bit output data from chip, and make them into desired format"""
         self.logger.warning('Start fetching 640 bit output data from chip...')
         data_received = bytearray(320)
@@ -123,6 +121,7 @@ class TransData:
         for i in range(8, 320, 4):
             outputs.append(data_received[i])
         self.logger.info('Read outputs: {}'.format(outputs))
+        return outputs
         
 
 
