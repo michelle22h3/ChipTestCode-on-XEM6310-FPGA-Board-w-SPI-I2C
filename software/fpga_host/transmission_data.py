@@ -44,18 +44,15 @@ class TransData:
         assert 0 <= ind_addr <=0xFF, "invalid inputs"
         r_pattern_16byte = DataGen.indir_read(ind_addr)
         self.fpga_tester.fifo_write(r_pattern_16byte)
-        # while self.fpga_tester.fifob_empty() == True:
-        time.sleep(0.01)
+        while self.fpga_tester.fifob_empty() == True:
+            time.sleep(0.1)
         self.logger.info('Data is fetched from inner reg to FIFO, start reading FIFO...')
         dataout = DataGen.full_zeros(16)
         self.fpga_tester.fifo_read(dataout)
         data_twobyte = bytearray([dataout[0], dataout[4]])
-        self.logger.debug('Read out data: {}: {}\{} from Address {}'.format(data_twobyte,hex(dataout[0]),hex(dataout[4]), hex(ind_addr)))
+        self.logger.critical('Read out data: {}: {}\{} from Address {}'.format(data_twobyte,hex(dataout[0]),hex(dataout[4]), hex(ind_addr)))
         data_int = int.from_bytes(data_twobyte, 'big')
-        if data_int == 3:
-            return True
-        else:
-            return False
+        return data_int
     
     def fetchoutput(self):
         time.sleep(1)

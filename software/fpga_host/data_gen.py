@@ -37,7 +37,7 @@ class DataGen:
     @classmethod
     def array_increment(cls, array_in: bytearray, size:int):
         data_int=int.from_bytes(array_in, 'big')
-        data_int += 1
+        data_int += 15
         array_out = data_int.to_bytes(size, 'big')
         return array_out
 

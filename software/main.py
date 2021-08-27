@@ -20,16 +20,21 @@ from fpga_host.data_gen import DataGen
 DEBUG = True  # Knob to bypass the error w/o FPGA
 w_path_full0W = 'DataOut/Weight/w_full0.txt'
 w_path_fullFW = 'DataOut/Weight/w_fullF.txt'
+w_path_randomW = 'DataOut/Weight/w_randomW.txt'
 
 a_path_full0W = 'DataOut/Activation/a_full0.txt'
 a_path_fullFW = 'DataOut/Activation/a_fullF.txt'
+a_path_randomW = 'DataOut/Activation/a_randomW.txt'
+
 
 o_path_full0W = 'DataOut/Output/o_full0.txt'
 o_path_fullFW = 'DataOut/Output/o_fullF.txt'
+o_path_randomW = 'DataOut/Output/o_randomW.txt'
+
 # ----------------------------------------------------#
 # Main Function
 # ----------------------------------------------------#
-def main():
+def fpga_main():
     args = CmdlineParser().parse()
     # Config logger to have a pretty logging console
     setup_logger(FPGATester.__name__, args.log_level) 
@@ -58,7 +63,7 @@ def run_host(fpga_tester):
     act_data = DataGen.full_zeros(32)
     #------------------------------------------------#
     mac_onecycle(trans, weights_data, act_data, w_path_full0W, a_path_full0W, o_path_full0W)
-    for _ in range (0,act_num): 
+    for _ in range (0,act_num, 15): 
         act_data = DataGen.array_increment(act_data, 32)
         mac_onecycle(trans, weights_data, act_data, w_path_full0W, a_path_full0W, o_path_full0W)
     #=========================================================================
@@ -68,9 +73,19 @@ def run_host(fpga_tester):
     act_data = DataGen.full_zeros(32)
     #------------------------------------------------#
     mac_onecycle(trans, weights_data, act_data, w_path_fullFW, a_path_fullFW, o_path_fullFW)
-    for _ in range (0,act_num): 
+    for _ in range (0,act_num, 15): 
         act_data = DataGen.array_increment(act_data, 32)
         mac_onecycle(trans, weights_data, act_data, w_path_fullFW, a_path_fullFW, o_path_fullFW)
+    #=========================================================================
+    # Run 64x4 times to increment activation from 0 to largest -- Random Weight
+    #=========================================================================
+    weights_data = DataGen.array_random(512)  # Generate data for testing
+    act_data = DataGen.full_zeros(32)
+    #------------------------------------------------#
+    mac_onecycle(trans, weights_data, act_data, w_path_randomW, a_path_randomW, o_path_randomW)
+    for _ in range (0,act_num, 15): 
+        act_data = DataGen.array_increment(act_data, 32)
+        mac_onecycle(trans, weights_data, act_data, w_path_randomW, a_path_randomW, o_path_randomW)
 
 # ----------------------------------------------------#
 # Function for One cycle of MAC Operation 
@@ -78,13 +93,14 @@ def run_host(fpga_tester):
 def mac_onecycle(trans, weights:bytearray, activations:bytearray, datapth_weight, datapath_act, datapath_out):
     trans.reset_host()
     trans.ind_write_reg(0x00,0x0003)         # Clear status signal by default
+
     trans.write_weights(weights)             # Write weights
     trans.write_activations(activations)     # Write activations
-    time.sleep(0.5)
-    trans.ind_read_reg(0x00)
-    # while not trans.read_status(0x00):
+    time.sleep(1.2)
+    # while trans.read_status(0x00) != 3:
     #     time.sleep(0.1)
     #     print('wait for finish writing data into chip...')
+    trans.ind_read_reg(0x00)
     trans.askfor_outputs()                   # Finish writing
     time.sleep(0.1)
     outputs = trans.get_outputs()
@@ -103,4 +119,4 @@ def mac_onecycle(trans, weights:bytearray, activations:bytearray, datapth_weight
 # ----------------------------------------------------#
 # ----------------------------------------------------#
 if __name__ == "__main__":
-    main()
+    fpga_main()
