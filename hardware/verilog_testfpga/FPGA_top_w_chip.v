@@ -37,6 +37,7 @@ wire [65*`NUM_ENDPOINTS-1:0] okEHx;
 
 // `okWireIn` connections
 wire [31:0] sw_rst;                       //---- Bit [0] is Software reset ----//
+// `okWireIn` connections
 wire [31:0] itf_sel_x;                    //---- Bit [0] is itf_sel ----//
 assign itf_sel = itf_sel_x[0];
 
@@ -48,6 +49,11 @@ assign sta_chip = {30'd0, sta_wei, sta_act}; // 2'b10 Write weight done; 2'b11 i
 wire [64:0] okEHFifobEmpty;
 wire [31:0] FIFOB_empty_x;
 assign FIFOB_empty_x = {31'd0, FIFOB_empty};
+// `okWireOut` connections
+wire [64:0] okEHFifobProgFull;
+wire [31:0] FIFOB_prog_full_x;
+assign FIFOB_prog_full_x = {31'd0, FIFOB_prog_full};
+
 // `okTriggerIn` connections
 wire [31:0] spi_config;                   //---- Bit [0] is SPI Master Config ----//
 
@@ -72,10 +78,12 @@ wire [31:0]              FIFOB_IN;        // data write into fifo
 wire                     FIFOB_wen;       // FIFO B Write enable
 wire                     FIFOB_empty;
 wire                     FIFOB_full;
+wire                     FIFOB_prog_full;
+wire [10:0]              FIFOB_prog_thresh;
 // -----------------------------------------------------------------------------
 // Assign on-board LED
 // -----------------------------------------------------------------------------
-assign led = ~ {sw_rst[5:0], sta_wei, sta_act};  // 0 means no light
+assign led = ~ {FIFOB_prog_full, sw_rst[4:0], sta_wei, sta_act};  // 0 means no light
 // -----------------------------------------------------------------------------
 // Instantiation of host interface
 // -----------------------------------------------------------------------------
@@ -92,7 +100,7 @@ okHost hostIF(
 // Instantiation of `okWireOR` to match the number of endpoints in your design
 // -----------------------------------------------------------------------------
 okWireOR #(.N(`NUM_ENDPOINTS)) wireOR (okEH, okEHx);
-assign okEHx = {okEHChipSTA, okEHFifobEmpty, okEHFIFOAIn, okEHFIFOBOut};
+assign okEHx = {okEHChipSTA, okEHFifobEmpty, okEHFifobProgFull, okEHFIFOAIn, okEHFIFOBOut};
 // -----------------------------------------------------------------------------
 // Instantiation of `okWireIn`
 // -----------------------------------------------------------------------------
@@ -124,6 +132,13 @@ okWireOut wireOutFifobEmpty(
     .okEH(okEHFifobEmpty),
     .ep_addr(`FIFOB_EMPTY_ADDR),
     .ep_datain(FIFOB_empty_x)
+);
+
+okWireOut wireOutFifobProgfull(
+    .okHE(okHE), 
+    .okEH(okEHFifobProgFull),
+    .ep_addr(`FIFOB_PROG_FULL_ADDR),
+    .ep_datain(FIFOB_prog_full_x)
 );
 // -----------------------------------------------------------------------------
 // Instantiation of `okTriggerIn`
@@ -157,15 +172,6 @@ okPipeOut pipeOutActOut(
 );
 
 // -----------------------------------------------------------------------------
-// Instantiation of Clk divider
-// -----------------------------------------------------------------------------
-// CLK_DIV CLK_DIV_uut
-// (
-// .CLK_IN1    (CLK_100M),             // Clock in ports
-// .CLK_OUT1   (CLK50M)               // Clock out port 
-
-// );
-// -----------------------------------------------------------------------------
 // Instantiation of input FIFO
 // -----------------------------------------------------------------------------
 FIFO_IN FIFO_Input_A (
@@ -189,6 +195,7 @@ FIFO_OUT FIFO_Output_B (
 .rd_en      (fifob_out_read_en),        // FIFO read enable (active high)
 .dout       (fifob_out_read_data),      // FIFO read data output
 .full       (FIFOB_full),               // FIFO full
+.prog_full  (FIFOB_prog_full),          // FIFO full with 320 byte data
 .empty      (FIFOB_empty)               // FIFO empty
 );
 
@@ -210,6 +217,5 @@ fpga_top u_fpga_top(
     .spi_miso    (spi_miso     ),
     .spi_cs      (spi_cs       )
 );
-
     
 endmodule

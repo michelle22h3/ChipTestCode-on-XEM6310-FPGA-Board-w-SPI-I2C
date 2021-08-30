@@ -8,6 +8,7 @@
 // WireOut
 `define STA_CHIP_ADDR 8'h27
 `define FIFOB_EMPTY_ADDR 8'h37
+`define FIFOB_PROG_FULL_ADDR 8'h38
 // TriggerIn
 `define SPI_CONFIG_ADDR 8'h47
 
@@ -17,7 +18,7 @@
 `define FIFOB_OUT_DATA_ADDR 8'hA7
 
 // Number of endpoints requiring `okEH`
-`define NUM_ENDPOINTS 4
+`define NUM_ENDPOINTS 5
 
 `endif
 

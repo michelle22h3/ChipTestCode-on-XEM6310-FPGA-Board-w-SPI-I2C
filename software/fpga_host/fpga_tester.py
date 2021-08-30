@@ -40,6 +40,7 @@ class FPGATester:
         ("ITF_SEL", AddrMapEntry(EndpointType.WIRE_IN, 0x17)),  # ITF Selection signal
         ("STA_CHIP", AddrMapEntry(EndpointType.WIRE_OUT, 0x27)),  # Status of CIM chip
         ("FIFOB_EMPTY", AddrMapEntry(EndpointType.WIRE_OUT, 0x37)), # 1 means FIFOB is empty
+        ("FIFOB_PROG_FULL", AddrMapEntry(EndpointType.WIRE_OUT, 0x38)), # 1 means FIFOB is full
         ("SPI_CONFIG", AddrMapEntry(EndpointType.TRIGGER_IN, 0x47)),  # Config SPI Master
         ("FIFOA_IN_DATA", AddrMapEntry(EndpointType.PIPE_IN, 0x87)),    # data into FIFO_A
         ("FIFOB_OUT_DATA", AddrMapEntry(EndpointType.PIPE_OUT, 0xA7)),    # data from FIFO_B
@@ -120,6 +121,11 @@ class FPGATester:
         """Find out if FIFO_B is empty, return True or False"""
         # True means fifob is not empty, false means fifob is empty
         return self.read_wire_out(self.ADDR_MAP["FIFOB_EMPTY"].address) == 1
+
+    def fifob_progfull(self):
+        """Find out if FIFO_B has got all the outputs, return True or False"""
+        # True means fifob is not empty, false means fifob is full
+        return self.read_wire_out(self.ADDR_MAP["FIFOB_PROG_FULL"].address) == 1
     
     # ------------------------------------------------------------- #
     def fifo_write(self,fifodata):

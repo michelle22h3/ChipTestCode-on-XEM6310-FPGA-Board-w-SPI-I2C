@@ -54,38 +54,39 @@ def run_host(fpga_tester):
 
     trans.ind_write_reg(0x00,0x0003)        # Clear status signal by default
     trans.ind_read_reg(0x00)
-    array32_ff = DataGen.array_fullff(32)
-    act_num = int.from_bytes(array32_ff, 'big')
+    # array32_ff = DataGen.array_fullff(32)
+    # act_num = int.from_bytes(array32_ff, 'big')
+    act_num = 2
     #========================================================================
     # Run 64x4 times to increment activation from 0 to largest -- Full 0 Weight
     #========================================================================
     weights_data = DataGen.full_zeros(512)  # Generate data for testing
-    act_data = DataGen.full_zeros(32)
+    act_data = DataGen.array_random(32)
     #------------------------------------------------#
     mac_onecycle(trans, weights_data, act_data, w_path_full0W, a_path_full0W, o_path_full0W)
-    for _ in range (0,act_num, 15): 
-        act_data = DataGen.array_increment(act_data, 32)
-        mac_onecycle(trans, weights_data, act_data, w_path_full0W, a_path_full0W, o_path_full0W)
-    #=========================================================================
-    # Run 64x4 times to increment activation from 0 to largest -- Full F Weight
-    #=========================================================================
-    weights_data = DataGen.array_fullff(512)  # Generate data for testing
-    act_data = DataGen.full_zeros(32)
-    #------------------------------------------------#
-    mac_onecycle(trans, weights_data, act_data, w_path_fullFW, a_path_fullFW, o_path_fullFW)
-    for _ in range (0,act_num, 15): 
-        act_data = DataGen.array_increment(act_data, 32)
-        mac_onecycle(trans, weights_data, act_data, w_path_fullFW, a_path_fullFW, o_path_fullFW)
-    #=========================================================================
-    # Run 64x4 times to increment activation from 0 to largest -- Random Weight
-    #=========================================================================
-    weights_data = DataGen.array_random(512)  # Generate data for testing
-    act_data = DataGen.full_zeros(32)
-    #------------------------------------------------#
-    mac_onecycle(trans, weights_data, act_data, w_path_randomW, a_path_randomW, o_path_randomW)
-    for _ in range (0,act_num, 15): 
-        act_data = DataGen.array_increment(act_data, 32)
-        mac_onecycle(trans, weights_data, act_data, w_path_randomW, a_path_randomW, o_path_randomW)
+    # for _ in range (0,act_num, 15): 
+    #     act_data = DataGen.array_increment(act_data, 32)
+    #     mac_onecycle(trans, weights_data, act_data, w_path_full0W, a_path_full0W, o_path_full0W)
+    # #=========================================================================
+    # # Run 64x4 times to increment activation from 0 to largest -- Full F Weight
+    # #=========================================================================
+    # weights_data = DataGen.array_fullff(512)  # Generate data for testing
+    # act_data = DataGen.full_zeros(32)
+    # #------------------------------------------------#
+    # mac_onecycle(trans, weights_data, act_data, w_path_fullFW, a_path_fullFW, o_path_fullFW)
+    # for _ in range (0,act_num, 15): 
+    #     act_data = DataGen.array_increment(act_data, 32)
+    #     mac_onecycle(trans, weights_data, act_data, w_path_fullFW, a_path_fullFW, o_path_fullFW)
+    # #=========================================================================
+    # # Run 64x4 times to increment activation from 0 to largest -- Random Weight
+    # #=========================================================================
+    # weights_data = DataGen.array_random(512)  # Generate data for testing
+    # act_data = DataGen.full_zeros(32)
+    # #------------------------------------------------#
+    # mac_onecycle(trans, weights_data, act_data, w_path_randomW, a_path_randomW, o_path_randomW)
+    # for _ in range (0,act_num, 15): 
+    #     act_data = DataGen.array_increment(act_data, 32)
+    #     mac_onecycle(trans, weights_data, act_data, w_path_randomW, a_path_randomW, o_path_randomW)
 
 # ----------------------------------------------------#
 # Function for One cycle of MAC Operation 
@@ -96,13 +97,13 @@ def mac_onecycle(trans, weights:bytearray, activations:bytearray, datapth_weight
 
     trans.write_weights(weights)             # Write weights
     trans.write_activations(activations)     # Write activations
-    time.sleep(1.2)
+    time.sleep(1.5)
     # while trans.read_status(0x00) != 3:
     #     time.sleep(0.1)
     #     print('wait for finish writing data into chip...')
     trans.ind_read_reg(0x00)
     trans.askfor_outputs()                   # Finish writing
-    time.sleep(0.1)
+    time.sleep(10)
     outputs = trans.get_outputs()
     with open(datapath_out,'a') as out_object:
         out_object.write('\n')

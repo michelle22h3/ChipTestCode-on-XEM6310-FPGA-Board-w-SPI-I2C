@@ -105,12 +105,14 @@ class TransData:
         """Request for 640-bit output data from chip"""
         self.logger.warning('Start requesting output data from chip...')
         r_pattern_16byte = DataGen.indir_read(0x38)
-        for i in range(40): # Read data from address 0x38 for 40 times
+        for _ in range(40): # Read data from address 0x38 for 40 times
             self.fpga_tester.fifo_write(r_pattern_16byte)
             #self.logger.debug('Send out data pattern: {}'.format(r_pattern_16byte))
 
     def get_outputs(self):
         """Get 640-bit output data from chip, and make them into desired format"""
+        fifob_full = self.fpga_tester.fifob_progfull()
+        self.logger.warning('Read status of output FIFO: {}'.format(fifob_full))
         self.logger.warning('Start fetching 640 bit output data from chip...')
         data_received = bytearray(320)
         self.fpga_tester.fifo_read(data_received)
