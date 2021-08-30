@@ -38,6 +38,7 @@ class FPGATester:
     ADDR_MAP = OrderedDict([
         ("SW_RST", AddrMapEntry(EndpointType.WIRE_IN, 0x07)),  # Software reset pin address
         ("ITF_SEL", AddrMapEntry(EndpointType.WIRE_IN, 0x17)),  # ITF Selection signal
+        ("FIFOB_THRESH", AddrMapEntry(EndpointType.WIRE_IN, 0x18)),  # ITF Selection signal
         ("STA_CHIP", AddrMapEntry(EndpointType.WIRE_OUT, 0x27)),  # Status of CIM chip
         ("FIFOB_EMPTY", AddrMapEntry(EndpointType.WIRE_OUT, 0x37)), # 1 means FIFOB is empty
         ("FIFOB_PROG_FULL", AddrMapEntry(EndpointType.WIRE_OUT, 0x38)), # 1 means FIFOB is full
@@ -116,6 +117,11 @@ class FPGATester:
         # Input: integer value
         """Selection of I2C and SPI, 0x00(0) means I2C and 0x01(1) means SPI"""
         self.write_wire_in(self.ADDR_MAP["ITF_SEL"].address, value, mask=0x01)
+
+    def fifob_fullthresh(self, value):
+            # Input: integer value
+        """Threshold value of FIFOB Prog Full"""
+        self.write_wire_in(self.ADDR_MAP["FIFOB_THRESH"].address, value, mask=0xFFFF)
 
     def fifob_empty(self):
         """Find out if FIFO_B is empty, return True or False"""

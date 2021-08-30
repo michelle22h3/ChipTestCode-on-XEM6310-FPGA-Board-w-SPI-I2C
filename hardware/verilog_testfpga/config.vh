@@ -4,6 +4,7 @@
 
 `define SW_RST_ADDR 8'h07
 `define ITF_SEL_ADDR 8'h17
+`define FIFOB_THRESH_ADDR 8'h18
 
 // WireOut
 `define STA_CHIP_ADDR 8'h27

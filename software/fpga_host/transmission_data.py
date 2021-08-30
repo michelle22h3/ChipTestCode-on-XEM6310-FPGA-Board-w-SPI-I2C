@@ -16,6 +16,8 @@ class TransData:
         self.fpga_tester.config_spimaster()
         self.fpga_tester.itf_selection(0) # 0 means select I2C and 1 means SPI
         self.fpga_tester.led_cntl(0x3E)   # LED Mask is 3E
+        self.fpga_tester.fifob_fullthresh(0x50) 
+
     # ----------------------------------------------------#
     # Indirect write and read of ONE inner register
     # ----------------------------------------------------#   
@@ -111,9 +113,10 @@ class TransData:
 
     def get_outputs(self):
         """Get 640-bit output data from chip, and make them into desired format"""
-        fifob_full = self.fpga_tester.fifob_progfull()
-        self.logger.warning('Read status of output FIFO: {}'.format(fifob_full))
-        self.logger.warning('Start fetching 640 bit output data from chip...')
+        while not self.fpga_tester.fifob_progfull():
+            self.logger.warning('Waiting for fetching 640 bit output...')
+            time.sleep(0.1)
+        self.logger.warning('Start reading data from FPGA...')
         data_received = bytearray(320)
         self.fpga_tester.fifo_read(data_received)
         outputs = bytearray([data_received[0], data_received[4]])

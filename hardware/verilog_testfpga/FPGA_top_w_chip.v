@@ -25,6 +25,17 @@ module FPGA_top_w_chip (
 // -----------------------------------------------------------------------------
 // System clock (Differential to single-ended buffer primitive by Xilinx)
 wire  CLK_100M;                  // process clock
+// Interface with FIFO and FPGA Logic
+wire [31:0]              FIFOA_OUT;       // FIFO out
+wire                     FIFOA_ren;       // Read enable
+wire                     FIFOA_empty;     // FIFO empty
+wire                     FIFOA_full;
+wire [31:0]              FIFOB_IN;        // data write into fifo
+wire                     FIFOB_wen;       // FIFO B Write enable
+wire                     FIFOB_empty;
+wire                     FIFOB_full;
+wire                     FIFOB_prog_full;
+wire [10:0]              FIFOB_prog_thresh;
 
 IBUFGDS osc_clk(.O(CLK_100M), .I(sys_clkp), .IB(sys_clkn));
 // `okHost` endpoints
@@ -40,6 +51,9 @@ wire [31:0] sw_rst;                       //---- Bit [0] is Software reset ----/
 // `okWireIn` connections
 wire [31:0] itf_sel_x;                    //---- Bit [0] is itf_sel ----//
 assign itf_sel = itf_sel_x[0];
+// `okWireIn` connections
+wire [31:0] fifob_thresh;                    //---- Bit [10:0]  ----//
+assign FIFOB_prog_thresh = fifob_thresh[10:0];
 
 // `okWireOut` connections
 wire [64:0] okEHChipSTA;
@@ -69,17 +83,6 @@ wire [64:0] okEHFIFOBOut;
 wire fifob_out_read_en;
 wire [31:0] fifob_out_read_data;          // Data read from fifo_b
 
-// Interface with FIFO and FPGA Logic
-wire [31:0]              FIFOA_OUT;       // FIFO out
-wire                     FIFOA_ren;       // Read enable
-wire                     FIFOA_empty;     // FIFO empty
-wire                     FIFOA_full;
-wire [31:0]              FIFOB_IN;        // data write into fifo
-wire                     FIFOB_wen;       // FIFO B Write enable
-wire                     FIFOB_empty;
-wire                     FIFOB_full;
-wire                     FIFOB_prog_full;
-wire [10:0]              FIFOB_prog_thresh;
 // -----------------------------------------------------------------------------
 // Assign on-board LED
 // -----------------------------------------------------------------------------
@@ -116,6 +119,13 @@ okWireIn wireInItfSel(
     .okHE(okHE), 
     .ep_addr(`ITF_SEL_ADDR), 
     .ep_dataout(itf_sel_x)
+    );
+
+// FIFOB_THRESH
+okWireIn wireFifobThresh(
+    .okHE(okHE), 
+    .ep_addr(`FIFOB_THRESH_ADDR), 
+    .ep_dataout(fifob_thresh)
     );
 // -----------------------------------------------------------------------------
 // Instantiation of `okWireOut`
@@ -196,6 +206,7 @@ FIFO_OUT FIFO_Output_B (
 .dout       (fifob_out_read_data),      // FIFO read data output
 .full       (FIFOB_full),               // FIFO full
 .prog_full  (FIFOB_prog_full),          // FIFO full with 320 byte data
+.prog_full_thresh  (FIFOB_prog_thresh), // FIFO full with 320 byte data
 .empty      (FIFOB_empty)               // FIFO empty
 );
 

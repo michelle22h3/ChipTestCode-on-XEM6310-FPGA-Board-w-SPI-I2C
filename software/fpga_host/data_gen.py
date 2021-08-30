@@ -35,11 +35,10 @@ class DataGen:
         return data
     
     @classmethod
-    def array_increment(cls, array_in: bytearray, size:int):
-        data_int=int.from_bytes(array_in, 'big')
-        data_int += 15
-        array_out = data_int.to_bytes(size, 'big')
-        return array_out
+    def array_increment(cls, array_in: bytearray):
+        array_in.pop(0)
+        array_in.append(0xFF)
+        return array_in
 
     # ----------------------------------------------------#
     # Data Pattern transmitted to FIFO
