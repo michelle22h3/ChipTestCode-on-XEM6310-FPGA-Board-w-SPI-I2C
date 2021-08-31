@@ -113,9 +113,9 @@ class TransData:
 
     def get_outputs(self):
         """Get 640-bit output data from chip, and make them into desired format"""
-        while not self.fpga_tester.fifob_progfull():
-            self.logger.warning('Waiting for fetching 640 bit output...')
-            time.sleep(0.1)
+        # while not self.fpga_tester.fifob_progfull():
+        #     self.logger.warning('Waiting for fetching 640 bit output...')
+        #     time.sleep(0.1)
         self.logger.warning('Start reading data from FPGA...')
         data_received = bytearray(320)
         self.fpga_tester.fifo_read(data_received)
@@ -124,12 +124,25 @@ class TransData:
             outputs.append(data_received[i])
         self.logger.info('Read outputs: {}'.format(outputs))
         return outputs
-        
-
-
-
-        
-        
-
-        
-        
+    # ----------------------------------------------------#
+    def decode_out(self, data: bytearray):
+        """Decode CIM output bytearray into raw data list."""
+        NUMS = 64
+        BITS = 10
+        decode_data = []
+        for i in range(NUMS):  # Decode i-th number
+            int_data, negative = 0, False
+            for j in range(BITS):  # Decode j-th bit
+                bit_loc = j * NUMS + i
+                byte_idx, byte_offset = int(bit_loc // 8), 7 - int(bit_loc % 8)
+                bit = (data[byte_idx] >> byte_offset) & 1
+                if j == 0:  # MSB: sign bit
+                    negative = bit == 1
+                else:
+                    # negate bit when positive
+                    int_data = int_data * 2 - bit if negative else int_data * 2 + (1^bit)
+                if j == BITS - 1:
+                    int_data *= 2  # Double decoding data in custom format
+            decode_data.append(int_data)    
+        return decode_data   
+    # ----------------------------------------------------#
