@@ -1,5 +1,6 @@
 import time
 import logging
+import numpy as np
 from fpga_host.data_gen import DataGen
 from fpga_host.logger import setup_logger
 class TransData:
@@ -113,9 +114,9 @@ class TransData:
 
     def get_outputs(self):
         """Get 640-bit output data from chip, and make them into desired format"""
-        # while not self.fpga_tester.fifob_progfull():
-        #     self.logger.warning('Waiting for fetching 640 bit output...')
-        #     time.sleep(0.1)
+        while not self.fpga_tester.fifob_progfull():
+            self.logger.warning('Waiting for fetching 640 bit output...')
+            time.sleep(0.1)
         self.logger.warning('Start reading data from FPGA...')
         data_received = bytearray(320)
         self.fpga_tester.fifo_read(data_received)
@@ -124,6 +125,8 @@ class TransData:
             outputs.append(data_received[i])
         self.logger.info('Read outputs: {}'.format(outputs))
         return outputs
+    # ----------------------------------------------------#
+    #    Functions: pre-processing and post processing    #
     # ----------------------------------------------------#
     def decode_out(self, data: bytearray):
         """Decode CIM output bytearray into raw data list."""
@@ -146,3 +149,24 @@ class TransData:
             decode_data.append(int_data)    
         return decode_data   
     # ----------------------------------------------------#
+    def output_theory(self, activations: bytearray, weights: bytearray):
+        weight_binary =  [self.access_bit(weights,i) for i in range(len(weights)*8)]
+        for j in range(len(weight_binary)):
+            if weight_binary[j] == 0:
+                weight_binary[j] = -1
+        weight_cal_a = np.array(weight_binary)
+        weight_cal=np.reshape(weight_cal_a, (64,64))
+        activation_int = [self.access_halfbyte(activations,i) for i in range(0, len(activations)*8, 4)]
+        activation_cal = np.array(activation_int)
+        output_theory = np.dot(weight_cal, activation_cal)
+        return output_theory
+    # ----------------------------------------------------#
+    def access_bit(self, data, num):
+        base = int(num // 8)
+        shift = int(num % 8)
+        return (data[base] >> shift) & 0x1
+
+    def access_halfbyte(self, data, num):
+        base = int(num // 8)
+        shift = int(num % 8)
+        return (data[base] >> shift) & 0xF

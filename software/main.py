@@ -2,7 +2,6 @@
 This is the top-level program.
 """
 import logging
-import os
 import time
 import sys
 import time
@@ -42,8 +41,8 @@ def run_host(fpga_tester):
     trans.reset_host()                      # Reset FPGA host and logic
     trans.ind_write_reg(0x00,0x0003)        # Clear status signal by default
     trans.ind_read_reg(0x00)
-    activationdata = DataGen.full_zeros(32)
-    weightdata = DataGen.full_zeros(512)
+    activationdata = DataGen.array_random(32)
+    weightdata = DataGen.array_random(512)
     outdata = []
     mac_onecycle(trans, activations=activationdata, weights=weightdata, outputs=outdata)
 # ----------------------------------------------------#
@@ -55,16 +54,18 @@ def mac_onecycle(trans, activations:bytearray, weights:bytearray, outputs:list):
     trans.ind_read_reg(0x00)    
     trans.write_weights(weights)             # Write weights
     trans.write_activations(activations)     # Write activations
-    time.sleep(3)
-    # while trans.read_status(0x00) != 3:
-    #     time.sleep(0.1)
-    #     print('wait for finish writing data into chip...')
+    time.sleep(1)
+    while trans.read_status(0x00) != 3:
+        time.sleep(1)
+        print('wait for finish writing data into chip...')
     trans.ind_read_reg(0x00)
     trans.askfor_outputs()                  # Finish writing
     time.sleep(0.1)                
     outputs_bytes = trans.get_outputs()
     outputs = trans.decode_out(outputs_bytes)
     print(outputs)
+    outputs_theory = trans.output_theory(activations, weights)
+    print(outputs_theory)
 # ----------------------------------------------------#
 # ----------------------------------------------------#
 if __name__ == "__main__":
