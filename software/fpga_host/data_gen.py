@@ -29,9 +29,9 @@ class DataGen:
     
     @classmethod
     def array_random(cls, size: int):
-        data = bytearray([random.randint(0,255)])
+        data = bytearray([random.randint(0,40)])
         for _ in range(1, size):
-            data.append(random.randint(0,255))
+            data.append(random.randint(0,40))
         return data
     
     @classmethod

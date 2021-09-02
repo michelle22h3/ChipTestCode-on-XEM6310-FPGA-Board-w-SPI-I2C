@@ -17,7 +17,8 @@ from fpga_host.data_gen import DataGen
 
 DEBUG = True  # Knob to bypass the error w/o FPGA
 
-path_out = 'DataOut/BytearrayOutput/.txt'
+path_out = 'DataOut/ReceivedOutput.txt'
+path_outtheory = 'DataOut/TheoryOutput.txt'
 
 # ----------------------------------------------------#
 # Main Function
@@ -39,26 +40,26 @@ def run_host(fpga_tester):
     setup_logger('CIM_Process', logging.INFO)
     trans = TransData(fpga_tester)
     trans.reset_host()                      # Reset FPGA host and logic
-    trans.ind_write_reg(0x00,0x0003)        # Clear status signal by default
-    trans.ind_read_reg(0x00)
+    # trans.ind_write_reg(0x00,0x0003)        # Clear status signal by default
+    trans.ind_read_reg(0x14)
+    trans.ind_read_reg(0x00) 
+
+    # trans.ind_write_reg(0x14,0x0060)        # Set Start Bit
+
     activationdata = DataGen.array_random(32)
-    weightdata = DataGen.array_random(512)
+    weightdata = DataGen.full_zeros(512)
     outdata = []
     mac_onecycle(trans, activations=activationdata, weights=weightdata, outputs=outdata)
 # ----------------------------------------------------#
 # Function for One cycle of MAC Operation 
 # ----------------------------------------------------#
 def mac_onecycle(trans, activations:bytearray, weights:bytearray, outputs:list):
-    trans.reset_host()
-    trans.ind_write_reg(0x00,0x0003)         # Clear status signal by default
-    trans.ind_read_reg(0x00)    
+    trans.reset_host() 
+    trans.ind_write_reg(0x00,0x0003)  
     trans.write_weights(weights)             # Write weights
     trans.write_activations(activations)     # Write activations
-    time.sleep(1)
-    while trans.read_status(0x00) != 3:
-        time.sleep(1)
-        print('wait for finish writing data into chip...')
-    trans.ind_read_reg(0x00)
+    time.sleep(1.5)
+    trans.mac_assert_finish() 
     trans.askfor_outputs()                  # Finish writing
     time.sleep(0.1)                
     outputs_bytes = trans.get_outputs()
@@ -66,6 +67,10 @@ def mac_onecycle(trans, activations:bytearray, weights:bytearray, outputs:list):
     print(outputs)
     outputs_theory = trans.output_theory(activations, weights)
     print(outputs_theory)
+    with open(path_out,'a') as filea:
+        filea.write("%s\n" % outputs)
+    with open(path_outtheory,'a') as fileb:
+        fileb.write("%s\n" % outputs_theory)
 # ----------------------------------------------------#
 # ----------------------------------------------------#
 if __name__ == "__main__":

@@ -133,6 +133,11 @@ class FPGATester:
         # True means fifob is not empty, false means fifob is full
         return self.read_wire_out(self.ADDR_MAP["FIFOB_PROG_FULL"].address) == 1
     
+    def sta_chip(self):
+        """Find out if the status of chip, sta_wei and sta_act"""
+        # True means fifob is not empty, false means fifob is full
+        return self.read_wire_out(self.ADDR_MAP["STA_CHIP"].address)
+    
     # ------------------------------------------------------------- #
     def fifo_write(self,fifodata):
         self.write_pipe_in(self.ADDR_MAP["FIFOA_IN_DATA"].address, fifodata)
