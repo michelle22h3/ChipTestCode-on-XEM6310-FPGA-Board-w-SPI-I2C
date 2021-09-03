@@ -40,26 +40,48 @@ def run_host(fpga_tester):
     setup_logger('CIM_Process', logging.INFO)
     trans = TransData(fpga_tester)
     trans.reset_host()                      # Reset FPGA host and logic
-    # trans.ind_write_reg(0x00,0x0003)        # Clear status signal by default
-    trans.ind_read_reg(0x14)
-    trans.ind_read_reg(0x00) 
-
-    # trans.ind_write_reg(0x14,0x0060)        # Set Start Bit
-
+    
     activationdata = DataGen.array_random(32)
     weightdata = DataGen.full_zeros(512)
     outdata = []
-    mac_onecycle(trans, activations=activationdata, weights=weightdata, outputs=outdata)
+    access_reg(trans)
+    power_measure(trans, activations=activationdata, weights=weightdata, outputs=outdata)
+    #mac_onecycle(trans, activations=activationdata, weights=weightdata, outputs=outdata)
 # ----------------------------------------------------#
 # Function for One cycle of MAC Operation 
 # ----------------------------------------------------#
+def access_reg(trans):
+    trans.reset_host()
+    trans.ind_write_reg(0x14,0x0070)        # Set Start Bit
+    trans.ind_write_reg(0x00,0x0003) 
+    trans.ind_read_reg(0x00)         
+    trans.ind_read_reg(0x14) 
+
+def power_measure(trans,activations:bytearray, weights:bytearray, outputs:list):
+    trans.reset_host() 
+    trans.ind_write_reg(0x00,0x0003)         # Clear status
+    trans.ind_write_reg(0x2C,0x0003)         # Enable Writing weights
+    trans.write_weights(weights)             # Write weights
+    trans.write_activations(activations)     # Write activations
+    time.sleep(1.5)
+    #trans.mac_assert_finish() 
+    trans.ind_read_reg(0x00)
+    for _ in range(5):
+        trans.ind_write_reg(0x00,0x0003)         # Clear status
+        trans.ind_read_reg(0x00)
+        trans.ind_write_reg(0x24,0x0002)                
+        trans.ind_read_reg(0x00) 
+
+
 def mac_onecycle(trans, activations:bytearray, weights:bytearray, outputs:list):
     trans.reset_host() 
-    trans.ind_write_reg(0x00,0x0003)  
+    trans.ind_write_reg(0x00,0x0003)         # Clear status
+    trans.ind_write_reg(0x2C,0x0003)         # Enable Writing weights
     trans.write_weights(weights)             # Write weights
     trans.write_activations(activations)     # Write activations
     time.sleep(1.5)
     trans.mac_assert_finish() 
+    trans.emptyfifo()
     trans.askfor_outputs()                  # Finish writing
     time.sleep(0.1)                
     outputs_bytes = trans.get_outputs()
@@ -67,10 +89,10 @@ def mac_onecycle(trans, activations:bytearray, weights:bytearray, outputs:list):
     print(outputs)
     outputs_theory = trans.output_theory(activations, weights)
     print(outputs_theory)
-    with open(path_out,'a') as filea:
-        filea.write("%s\n" % outputs)
-    with open(path_outtheory,'a') as fileb:
-        fileb.write("%s\n" % outputs_theory)
+    # with open(path_out,'a') as filea:
+    #     filea.write("%s\n" % outputs)
+    # with open(path_outtheory,'a') as fileb:
+    #     fileb.write("%s\n" % outputs_theory)
 # ----------------------------------------------------#
 # ----------------------------------------------------#
 if __name__ == "__main__":

@@ -17,11 +17,18 @@ class TransData:
         self.fpga_tester.config_spimaster()
         self.fpga_tester.itf_selection(0) # 0 means select I2C and 1 means SPI
         self.fpga_tester.led_cntl(0x3E)   # LED Mask is 3E
-        self.fpga_tester.fifob_fullthresh(0x50) 
+        self.fpga_tester.fifob_fullthresh(0x4F) 
         self.fpga_tester.fifob_progfull()
     # ----------------------------------------------------#
     # Indirect write and read of ONE inner register
     # ----------------------------------------------------#   
+    def emptyfifo(self):
+        #data = bytearray(32)
+        #self.fpga_tester.fifo_read(data)
+        #self.logger.warning('Read out dummy data: {}'.format(data))
+        self.fpga_tester.fifob_empty()
+        self.fpga_tester.fifob_progfull()
+
     def ind_write_reg(self, ind_addr:int, ind_data:int):
         """With an 8-b addr, 16-b data, perform an indirect writing process"""
         assert 0 <= ind_addr <=0xFF and 0 <= ind_data <= 0xFFFF, "invalid inputs"
@@ -34,12 +41,13 @@ class TransData:
         assert 0 <= ind_addr <=0xFF, "invalid inputs"
         r_pattern_16byte = DataGen.indir_read(ind_addr)
         self.fpga_tester.fifo_write(r_pattern_16byte)
-        while self.fpga_tester.fifob_empty() == True:
+        while self.fpga_tester.fifob_empty():
             time.sleep(0.1)
         self.logger.info('Data is fetched from inner reg to FIFO, start reading FIFO...')
         dataout = DataGen.full_zeros(16)
         self.fpga_tester.fifo_read(dataout)
         data_twobyte = bytearray([dataout[0], dataout[4]])
+        self.emptyfifo()
         self.logger.critical('Read out data: {}: {}\{} from Address {}'.format(data_twobyte,hex(dataout[0]),hex(dataout[4]), hex(ind_addr)))
     # ----------------------------------------------------#
     # Data transmission for MAC operation
@@ -47,7 +55,7 @@ class TransData:
     def write_weights(self, weights:bytearray):
         """"Input: 4096-bit, 1-bit/w, in Bytearray type (one iterm stores 8 weights)"""
         self.logger.warning('Start Sending 4096 bit weight data to chip...')
-        self.ind_write_reg(0x2C, 0x0001)
+
         for i in range(0, 512, 2):
             weights_2byte = int.from_bytes(weights[i:i+2], "big")
             self.ind_write_reg(0x30, weights_2byte)
@@ -55,7 +63,7 @@ class TransData:
     def write_activations(self, activations:bytearray):
         """Input: 256-bit, 4-bit/act, in Bytearray type (one iterm stores 2 activations)"""
         self.logger.warning('Start Sending 256 bit activation data to chip...')
-        self.ind_write_reg(0x2C, 0x0002)
+
         for j in range(0, 32, 2):
             act_2bytes =int.from_bytes(activations[j:j+2], "big")
             self.ind_write_reg(0x34, act_2bytes)
@@ -76,8 +84,8 @@ class TransData:
 
     def get_outputs(self):
         """Get 640-bit output data from chip, and make them into desired format"""
-        while self.fpga_tester.fifob_progfull() == False:
-            time.sleep(0.1)
+        # while self.fpga_tester.fifob_progfull() == False:
+        #     time.sleep(0.1)
         self.logger.warning('Start reading data from FPGA...')
         data_received = bytearray(320)
         self.fpga_tester.fifo_read(data_received)
@@ -102,8 +110,8 @@ class TransData:
                 bit = (data[byte_idx] >> byte_offset) & 1
                 if j == 0:  # MSB: sign bit
                     negative = bit == 1
-                # elif j in [1,2,3]:   ## Skip 3 MSB if output is 7 bit
-                #     continue
+                elif j in [1,2]:   ## Skip 3 MSB if output is 7 bit
+                    continue
                 else:
                     # negate bit when positive
                     int_data = int_data * 2 - bit if negative else int_data * 2 + (1^bit)
