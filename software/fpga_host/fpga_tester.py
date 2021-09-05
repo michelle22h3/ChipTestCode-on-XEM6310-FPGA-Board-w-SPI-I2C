@@ -55,7 +55,7 @@ class FPGATester:
         :param fpga_bit_file: path of the fpga bitstream file.
         :param debug: optional flag for debug purpose due to the lack of FPGA device.
         """
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = logging.getLogger('CIM_Process')
         self.debug = debug
         self.device = self.initialize_device(fpga_bit_file)
     # ------------- Device Initialization -------------#

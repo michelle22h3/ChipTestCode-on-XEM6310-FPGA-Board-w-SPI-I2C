@@ -41,8 +41,8 @@ class TransData:
         assert 0 <= ind_addr <=0xFF, "invalid inputs"
         r_pattern_16byte = DataGen.indir_read(ind_addr)
         self.fpga_tester.fifo_write(r_pattern_16byte)
-        while self.fpga_tester.fifob_empty():
-            time.sleep(0.1)
+        #while self.fpga_tester.fifob_empty():
+        time.sleep(0.1)
         self.logger.info('Data is fetched from inner reg to FIFO, start reading FIFO...')
         dataout = DataGen.full_zeros(16)
         self.fpga_tester.fifo_read(dataout)
@@ -97,11 +97,11 @@ class TransData:
     # ----------------------------------------------------#
     #    Functions: pre-processing and post processing    #
     # ----------------------------------------------------#
-    def decode_out(self, data: bytearray):
+    def decode_out(self, data: bytearray, decode_data:list):
         """Decode CIM output bytearray into raw data list."""
         NUMS = 64
         BITS = 10
-        decode_data = []
+        decode_data.clear()
         for i in range(NUMS):  # Decode i-th number
             int_data, negative = 0, False
             for j in range(BITS):  # Decode j-th bit
@@ -117,7 +117,8 @@ class TransData:
                     int_data = int_data * 2 - bit if negative else int_data * 2 + (1^bit)
                 if j == BITS - 1:
                     int_data *= 2  # Double decoding data in custom format
-            decode_data.append(int_data)    
+            decode_data.append(int_data) 
+        decode_data.reverse()   # From [0] to [63]
         return decode_data   
     # ----------------------------------------------------#
     def output_theory(self, activations: bytearray, weights: bytearray):
@@ -130,7 +131,9 @@ class TransData:
         activation_int = [self.access_halfbyte(activations,i) for i in range(0, len(activations)*8, 4)]
         activation_cal = np.array(activation_int)
         output_theory = np.dot(weight_cal.T, activation_cal)
-        return output_theory
+        output_theory_list = list(output_theory)
+        output_theory_list.reverse()
+        return output_theory_list
     # ----------------------------------------------------#
     def access_bit(self, data, num):
         base = int(num // 8)
