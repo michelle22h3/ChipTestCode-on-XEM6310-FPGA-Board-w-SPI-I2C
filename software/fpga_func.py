@@ -47,33 +47,41 @@ class FpgaFunc:
         self.access_reg()
         #power_measure(trans, activations=activationdata, weights=weightdata, outputs=outdata)
         #mac_onecycle(trans, activations=activationdata, weights=weightdata, outputs=outdata)
-        #self.cim_processing(activations=activationdata, weights=weightdata, outputs=outdata)
+        self.cim_processing(activations=activationdata, weights=weightdata, outputs=outdata)
         print(outdata)
     # ----------------------------------------------------#
     # Function for One cycle of MAC Operation 
     # ----------------------------------------------------#
     def access_reg(self):
         self.trans.reset_host()
-        self.trans.ind_write_reg(0x14,0x0070)        # Set Start Bit
-        self.trans.ind_write_reg(0x00,0x0003) 
-        self.trans.ind_write_reg(0x2C,0x0003) 
-        self.trans.ind_read_reg(0x00)    
-        self.trans.ind_read_reg(0x10)         
-        self.trans.ind_read_reg(0x14) 
-        self.trans.ind_read_reg(0x2C) 
+        w_to_reg=bytearray(0)
+        self.trans.wdata_fifoa_append(0x14,0x0070,w_to_reg)        # Set Start Bit
+        self.trans.wdata_fifoa_append(0x00,0x0003,w_to_reg) 
+        self.trans.wdata_fifoa_append(0x2C,0x0003,w_to_reg)
+        self.trans.wdata_fifoa_append(0x00,0x0003,w_to_reg) 
+        self.trans.rdata_fifob_append(0x00,w_to_reg)    
+        self.trans.rdata_fifob_append(0x10,w_to_reg)   
+        self.trans.rdata_fifob_append(0x14,w_to_reg) 
+        self.trans.rdata_fifob_append(0x2C,w_to_reg)  
+
+        time.sleep(0.2)
+        self.trans.update_wires()
+        # print(w_to_reg)
+        self.trans.pipe_data_in(w_to_reg)
+        self.trans.pipe_data_out(num=4) # Number of regs to be read, num must be even numbers
 
 
     def cim_processing(self, activations:bytearray, weights:bytearray, outputs:list):
-        self.trans.ind_write_reg(0x00,0x0003)         # Clear status signals of chip
-        #self.trans.ind_write_reg(0x2C,0x0003)         # Enable Writing weights
+        self.trans.update_wires()
+
         self.trans.write_weights(weights)             # Write weights
         self.trans.write_activations(activations)     # Write activations
         time.sleep(1.2)
         self.trans.mac_assert_finish() 
-        self.trans.askfor_outputs()                  # Finish writing
-        time.sleep(0.1)                
-        outputs_bytes = self.trans.get_outputs()
-        self.trans.decode_out(outputs_bytes, outputs)
+        time.sleep(0.1)
+        outdata = self.trans.get_640b_out()
+        self.trans.decode_out(outdata, outputs)
+        print(outputs)
         outputs_theory = self.trans.output_theory(activations, weights)
         print('Theory: {} '.format(outputs_theory))
 

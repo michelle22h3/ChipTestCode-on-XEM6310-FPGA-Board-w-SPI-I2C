@@ -85,10 +85,10 @@ class FPGATester:
 
         self.device.LoadDefaultPLLConfiguration()  # Config PLL with settings stored in EEPROM
 
-        # if self.device.ConfigureFPGA(self.bitfile) != SUCCESS:  # Download Xilinx config bit-file to FPGA
-        #     self.logger.critical("Failed to config FPGA with bitstream file {}.".format(self.bitfile))
-        #     if not self.debug:
-        #         return None
+        if self.device.ConfigureFPGA(self.bitfile) != SUCCESS:  # Download Xilinx config bit-file to FPGA
+            self.logger.critical("Failed to config FPGA with bitstream file {}.".format(self.bitfile))
+            if not self.debug:
+                return None
 
         if self.device.IsFrontPanelEnabled() != True: # This line is always showed on during testing
             self.logger.critical("okHostInterface is not installed in the FPGA configuration.")

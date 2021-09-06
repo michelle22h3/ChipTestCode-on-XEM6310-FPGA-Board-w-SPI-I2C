@@ -17,78 +17,88 @@ class TransData:
         self.fpga_tester.config_spimaster()
         self.fpga_tester.itf_selection(0) # 0 means select I2C and 1 means SPI
         self.fpga_tester.led_cntl(0x3E)   # LED Mask is 3E
-        self.fpga_tester.fifob_fullthresh(0x4F) 
+        self.fpga_tester.fifob_fullthresh(0x4A) 
         self.fpga_tester.fifob_empty()
-        
+        self.fpga_tester.sta_chip()
+
+    def update_wires(self):
+        self.fpga_tester.fifob_fullthresh(0x4A) 
+        self.fpga_tester.fifob_empty()
+        self.fpga_tester.sta_chip()
     # ----------------------------------------------------#
     # Indirect write and read of ONE inner register
     # ----------------------------------------------------#   
-
-    def ind_write_reg(self, ind_addr:int, ind_data:int):
-        """With an 8-b addr, 16-b data, perform an indirect writing process"""
+    def wdata_fifoa_append(self, ind_addr:int, ind_data:int, w_pattern:bytearray):
+        """With an 8-b addr, 16-b data, append data for an indirect writing """
         assert 0 <= ind_addr <=0xFF and 0 <= ind_data <= 0xFFFF, "invalid inputs"
         w_pattern_16byte = DataGen.indir_write(ind_addr, ind_data)
-        self.logger.debug('Write 16-bit data: {} into inner reg: {}'.format(hex(ind_data), hex(ind_addr)))
-        self.fpga_tester.fifo_write(w_pattern_16byte)
-
-    def ind_read_reg(self, ind_addr:int):
-        """With an 8-b addr, 16-b data, perform an indirect writing process"""
+        w_pattern.extend(w_pattern_16byte)
+    
+    def rdata_fifob_append(self, ind_addr:int, w_pattern:bytearray):
+        """With an 8-b addr, 16-b data, append data for an indirect writing """
         assert 0 <= ind_addr <=0xFF, "invalid inputs"
         r_pattern_16byte = DataGen.indir_read(ind_addr)
-        self.fpga_tester.fifo_write(r_pattern_16byte)
+        w_pattern.extend(r_pattern_16byte)
+
+    def pipe_data_in(self, data_to_fifoa):
+        self.fpga_tester.fifo_write(data_to_fifoa)
+
+    def pipe_data_out(self, num:int):
+        dataout = bytearray(num*8)
         while self.fpga_tester.fifob_empty():
-          time.sleep(0.1)
-        self.logger.info('Data is fetched from inner reg to FIFO, start reading FIFO...')
-        dataout = DataGen.full_zeros(16)
+            time.sleep(0.1)
         self.fpga_tester.fifo_read(dataout)
-        data_twobyte = bytearray([dataout[0], dataout[4]])
-        self.fpga_tester.fifob_empty()
-        self.logger.critical('Read out data: {}: {}\{} from Address {}'.format(data_twobyte,hex(dataout[0]),hex(dataout[4]), hex(ind_addr)))
+        print(dataout)
+        for i in range(num):
+            data_twobyte = [hex(dataout[i*8]), hex(dataout[i*8+4])]
+            self.logger.critical('Read out data: {}: '.format(data_twobyte))
     # ----------------------------------------------------#
     # Data transmission for MAC operation
     # ----------------------------------------------------#
     def write_weights(self, weights:bytearray):
         """"Input: 4096-bit, 1-bit/w, in Bytearray type (one iterm stores 8 weights)"""
         self.logger.warning('Start Sending 4096 bit weight data to chip...')
-
+        all_weights = bytearray(0)
         for i in range(0, 512, 2):
             weights_2byte = int.from_bytes(weights[i:i+2], "big")
-            self.ind_write_reg(0x30, weights_2byte)
+            self.wdata_fifoa_append(0x30, weights_2byte, all_weights)
+        self.pipe_data_in(all_weights)
 
     def write_activations(self, activations:bytearray):
         """Input: 256-bit, 4-bit/act, in Bytearray type (one iterm stores 2 activations)"""
         self.logger.warning('Start Sending 256 bit activation data to chip...')
-
+        all_acts = bytearray(0)
         for j in range(0, 32, 2):
             act_2bytes =int.from_bytes(activations[j:j+2], "big")
-            self.ind_write_reg(0x34, act_2bytes)
-
+            self.wdata_fifoa_append(0x34, act_2bytes, all_acts)
+        self.pipe_data_in(all_acts)
+    
     def mac_assert_finish(self):
         while not self.fpga_tester.sta_chip() == 3:
             time.sleep(0.1)
         self.logger.warning('MAC assert finish')
-    # ----------------------------------------------------#
-    # Send 16 byte data pattern for 40 times to read out 640bit (40x16) output data
-    def askfor_outputs(self):
-        """Request for 640-bit output data from chip"""
-        self.logger.warning('Start requesting output data from chip...')
-        r_pattern_16byte = DataGen.indir_read(0x38)
-        for _ in range(40): # Read data from address 0x38 for 40 times
-            self.fpga_tester.fifo_write(r_pattern_16byte)
-            #self.logger.debug('Send out data pattern: {}'.format(r_pattern_16byte))
 
-    def get_outputs(self):
-        """Get 640-bit output data from chip, and make them into desired format"""
+    # ----------------------------------------------------#
+
+    def get_640b_out(self):
+        self.get_output()
+        outputdata = bytearray(0)
         while self.fpga_tester.fifob_progfull() == False:
             time.sleep(0.1)
-        self.logger.warning('Start reading data from FPGA...')
         data_received = bytearray(320)
         self.fpga_tester.fifo_read(data_received)
-        outputs = bytearray([data_received[0], data_received[4]])
-        for i in range(8, 320, 4):
-            outputs.append(data_received[i])
-        self.logger.info('Read outputs: {}'.format(outputs))
-        return outputs
+        for i in range(0, 320, 4):
+            outputdata.append(data_received[i])
+        print(outputdata)
+        return outputdata
+        
+    def get_output(self):
+        # dataout = bytearray(16)
+        askdata = bytearray(0)
+        for _ in range(40):
+            self.rdata_fifob_append(0x38, askdata)
+        self.pipe_data_in(askdata)
+
     # ----------------------------------------------------#
     #    Functions: pre-processing and post processing    #
     # ----------------------------------------------------#
