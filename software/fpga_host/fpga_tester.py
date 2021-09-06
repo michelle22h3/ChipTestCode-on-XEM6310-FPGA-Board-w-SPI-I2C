@@ -57,23 +57,23 @@ class FPGATester:
         """
         self.logger = logging.getLogger('CIM_Process')
         self.debug = debug
-        self.device = self.initialize_device(fpga_bit_file)
+        self.device = ok.okCFrontPanel()
+        self.bitfile = fpga_bit_file
     # ------------- Device Initialization -------------#
-    def initialize_device(self, fpga_bit_file):
+    def initialize_device(self):
         """
         Initialize FPGA device and sanity check the connection of FPGA.
         :param fpga_bit_file: filename of FPGA bitstream.
         :return: reference to the Opal Kelly FrontPanel-enabled device.
         """
-        device = ok.okCFrontPanel()
-        if device.OpenBySerial("") != SUCCESS:  # Open the first available device
+        if self.device.OpenBySerial("") != SUCCESS:  # Open the first available device
             self.logger.critical("A device could not be opened. Is one connected?")
             if not self.debug:
                 return None
 
         # Get some general information about the device
         device_info = ok.okTDeviceInfo()
-        if device.GetDeviceInfo(device_info) != SUCCESS:
+        if self.device.GetDeviceInfo(device_info) != SUCCESS:
             self.logger.critical("Unable to retrieve device information.")
             if not self.debug:
                 return None
@@ -83,19 +83,19 @@ class FPGATester:
         self.logger.info("Serial Number: {}".format(device_info.serialNumber))
         self.logger.info("Device ID: {}".format(device_info.deviceID))
 
-        device.LoadDefaultPLLConfiguration()  # Config PLL with settings stored in EEPROM
+        self.device.LoadDefaultPLLConfiguration()  # Config PLL with settings stored in EEPROM
 
-        if device.ConfigureFPGA(fpga_bit_file) != SUCCESS:  # Download Xilinx config bit-file to FPGA
-            self.logger.critical("Failed to config FPGA with bitstream file {}.".format(fpga_bit_file))
-            if not self.debug:
-                return None
+        # if self.device.ConfigureFPGA(self.bitfile) != SUCCESS:  # Download Xilinx config bit-file to FPGA
+        #     self.logger.critical("Failed to config FPGA with bitstream file {}.".format(self.bitfile))
+        #     if not self.debug:
+        #         return None
 
-        if device.IsFrontPanelEnabled() != True: # This line is always showed on during testing
+        if self.device.IsFrontPanelEnabled() != True: # This line is always showed on during testing
             self.logger.critical("okHostInterface is not installed in the FPGA configuration.")
             if not self.debug:
                 return None
 
-        return device
+        return True
     # ------------------------------------------------------------- #
     def reset(self):
         """Reset FPGA hardware."""

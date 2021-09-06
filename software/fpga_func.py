@@ -1,6 +1,7 @@
 """
 This is the top-level program.
 """
+
 import logging
 import time
 import sys
@@ -23,7 +24,7 @@ path_outtheory = 'DataOut/TheoryOutput.txt'
 # ----------------------------------------------------#
 # Main Function
 # ----------------------------------------------------#
-class FpgaFun:
+class FpgaFunc:
     def __init__(self):
         self.args = CmdlineParser().parse()
         self.fpga_tester = FPGATester(self.args.fpga_bit, debug=DEBUG)
@@ -33,8 +34,7 @@ class FpgaFun:
     # Initial and Reset FPGA Host and logic
     # ----------------------------------------------------#  
     def fpga_init(self):
-        if self.fpga_tester.device is None:
-            sys.exit(1)
+        self.fpga_tester.initialize_device()
     # Initialize Data control module
         self.trans.reset_host()
     # ----------------------------------------------------#
@@ -43,11 +43,11 @@ class FpgaFun:
     def run_host(self):
         activationdata = DataGen.array_random(32)
         weightdata = DataGen.full_zeros(512)
-        outdata = [1,1]
+        outdata = []
         self.access_reg()
         #power_measure(trans, activations=activationdata, weights=weightdata, outputs=outdata)
         #mac_onecycle(trans, activations=activationdata, weights=weightdata, outputs=outdata)
-        self.cim_processing(activations=activationdata, weights=weightdata, outputs=outdata)
+        #self.cim_processing(activations=activationdata, weights=weightdata, outputs=outdata)
         print(outdata)
     # ----------------------------------------------------#
     # Function for One cycle of MAC Operation 
@@ -56,22 +56,26 @@ class FpgaFun:
         self.trans.reset_host()
         self.trans.ind_write_reg(0x14,0x0070)        # Set Start Bit
         self.trans.ind_write_reg(0x00,0x0003) 
-        self.trans.ind_read_reg(0x00)         
+        self.trans.ind_write_reg(0x2C,0x0003) 
+        self.trans.ind_read_reg(0x00)    
+        self.trans.ind_read_reg(0x10)         
         self.trans.ind_read_reg(0x14) 
+        self.trans.ind_read_reg(0x2C) 
+
 
     def cim_processing(self, activations:bytearray, weights:bytearray, outputs:list):
-        self.trans.reset_host() 
-        self.trans.ind_write_reg(0x00,0x0003)         # Clear status
-        self.trans.ind_write_reg(0x2C,0x0003)         # Enable Writing weights
+        self.trans.ind_write_reg(0x00,0x0003)         # Clear status signals of chip
+        #self.trans.ind_write_reg(0x2C,0x0003)         # Enable Writing weights
         self.trans.write_weights(weights)             # Write weights
         self.trans.write_activations(activations)     # Write activations
-        time.sleep(1.5)
-        #trans.mac_assert_finish() 
-        self.trans.emptyfifo()
+        time.sleep(1.2)
+        self.trans.mac_assert_finish() 
         self.trans.askfor_outputs()                  # Finish writing
         time.sleep(0.1)                
         outputs_bytes = self.trans.get_outputs()
         self.trans.decode_out(outputs_bytes, outputs)
+        outputs_theory = self.trans.output_theory(activations, weights)
+        print('Theory: {} '.format(outputs_theory))
 
 
     def power_measure(self,activations:bytearray, weights:bytearray, outputs:list):
@@ -112,6 +116,6 @@ class FpgaFun:
 if __name__ == "__main__":
     # Config logger to have a pretty logging console
     setup_logger('CIM_Process', logging.INFO)
-    fpga_main = FpgaFun()
+    fpga_main = FpgaFunc()
     fpga_main.fpga_init()
     fpga_main.run_host()

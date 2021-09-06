@@ -18,16 +18,11 @@ class TransData:
         self.fpga_tester.itf_selection(0) # 0 means select I2C and 1 means SPI
         self.fpga_tester.led_cntl(0x3E)   # LED Mask is 3E
         self.fpga_tester.fifob_fullthresh(0x4F) 
-        self.fpga_tester.fifob_progfull()
+        self.fpga_tester.fifob_empty()
+        
     # ----------------------------------------------------#
     # Indirect write and read of ONE inner register
     # ----------------------------------------------------#   
-    def emptyfifo(self):
-        #data = bytearray(32)
-        #self.fpga_tester.fifo_read(data)
-        #self.logger.warning('Read out dummy data: {}'.format(data))
-        self.fpga_tester.fifob_empty()
-        self.fpga_tester.fifob_progfull()
 
     def ind_write_reg(self, ind_addr:int, ind_data:int):
         """With an 8-b addr, 16-b data, perform an indirect writing process"""
@@ -41,13 +36,13 @@ class TransData:
         assert 0 <= ind_addr <=0xFF, "invalid inputs"
         r_pattern_16byte = DataGen.indir_read(ind_addr)
         self.fpga_tester.fifo_write(r_pattern_16byte)
-        #while self.fpga_tester.fifob_empty():
-        time.sleep(0.1)
+        while self.fpga_tester.fifob_empty():
+          time.sleep(0.1)
         self.logger.info('Data is fetched from inner reg to FIFO, start reading FIFO...')
         dataout = DataGen.full_zeros(16)
         self.fpga_tester.fifo_read(dataout)
         data_twobyte = bytearray([dataout[0], dataout[4]])
-        self.emptyfifo()
+        self.fpga_tester.fifob_empty()
         self.logger.critical('Read out data: {}: {}\{} from Address {}'.format(data_twobyte,hex(dataout[0]),hex(dataout[4]), hex(ind_addr)))
     # ----------------------------------------------------#
     # Data transmission for MAC operation
@@ -84,8 +79,8 @@ class TransData:
 
     def get_outputs(self):
         """Get 640-bit output data from chip, and make them into desired format"""
-        # while self.fpga_tester.fifob_progfull() == False:
-        #     time.sleep(0.1)
+        while self.fpga_tester.fifob_progfull() == False:
+            time.sleep(0.1)
         self.logger.warning('Start reading data from FPGA...')
         data_received = bytearray(320)
         self.fpga_tester.fifo_read(data_received)
