@@ -29,15 +29,21 @@ class DataGen:
     
     @classmethod
     def array_random(cls, size: int):
-        data = bytearray([random.randint(0,10)])
+        data = bytearray([random.randint(0,0xFF)])
         for _ in range(1, size):
-            data.append(random.randint(0,10))
+            data.append(random.randint(0,0xFF))
         return data
     
     @classmethod
     def array_increment(cls, array_in: bytearray):
         array_in.pop(0)
         array_in.append(0xFF)
+        return array_in
+
+    @classmethod
+    def array_increment_each(cls, array_in: bytearray):
+        for i in range(len(array_in)):
+            array_in[i]+=17
         return array_in
 
     # ----------------------------------------------------#

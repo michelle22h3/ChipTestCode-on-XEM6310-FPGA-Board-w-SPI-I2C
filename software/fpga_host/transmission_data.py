@@ -17,12 +17,12 @@ class TransData:
         self.fpga_tester.config_spimaster()
         self.fpga_tester.itf_selection(0) # 0 means select I2C and 1 means SPI
         self.fpga_tester.led_cntl(0x3E)   # LED Mask is 3E
-        self.fpga_tester.fifob_fullthresh(0x4A) 
+        self.fpga_tester.fifob_fullthresh(0x50) 
         self.fpga_tester.fifob_empty()
         self.fpga_tester.sta_chip()
 
     def update_wires(self):
-        self.fpga_tester.fifob_fullthresh(0x4A) 
+        self.fpga_tester.fifob_fullthresh(0x50) 
         self.fpga_tester.fifob_empty()
         self.fpga_tester.sta_chip()
     # ----------------------------------------------------#
@@ -115,8 +115,8 @@ class TransData:
                 bit = (data[byte_idx] >> byte_offset) & 1
                 if j == 0:  # MSB: sign bit
                     negative = bit == 1
-                elif j in [1,2]:   ## Skip 3 MSB if output is 7 bit
-                    continue
+                # elif j in [1,2,3]:   ## Skip 3 MSB if output is 7 bit (1 means 9, 2 means 8, 3 means 7)
+                #     continue
                 else:
                     # negate bit when positive
                     int_data = int_data * 2 - bit if negative else int_data * 2 + (1^bit)
