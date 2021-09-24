@@ -52,7 +52,9 @@ class DataGen:
     @classmethod
     def write_byte(cls, addr:int, data:int):
         """
-        Generate proper data pattern for Writing 1 byte data into itf_reg
+        Generate proper 32-bit data pattern for Writing 1 byte data into itf_reg
+        Sequence of the 32-bit data pipe in FIFOA:
+        [7:0] [15:8] [23:16] [31:24]
         """
         assert 0 < addr <= 6 and 0 <= data <= 255, "Invalid size provided."
         w_four_byte = [data, addr, 1, 0] # data + addr + 1 (means write) + (arbitary value)
@@ -61,7 +63,9 @@ class DataGen:
     @classmethod
     def read_byte(cls, addr:int):
         """
-        Generate proper data pattern for Reading 1 byte data into itf_reg
+        Generate proper 32-bit data pattern for Reading 1 byte data into itf_reg
+        Sequence of the 32-bit data pipe in FIFOA:
+        [7:0] [15:8] [23:16] [31:24]
         """
         assert 0 < addr <= 6 , "Invalid addr provided."
         r_four_byte = [0, addr, 0, 0] #(arbitary value) + addr + 0 (means read) + (arbitary value)
@@ -72,12 +76,13 @@ class DataGen:
         """
         With a 1byte address and a 2byte data, generate
         proper data pattern for indirect writing process
+        data pattern: 4x32 bit
         """
         send_waddr = cls.write_byte(0x02, ind_addr)          # Send Address of inner reg
         send_data = ind_data.to_bytes(2,"big")
         send_data_lsb = cls.write_byte(0x03, send_data[1])   # Send lsb of data
-        send_data_msb = cls.write_byte(0x04, send_data[0])  # Send msb of data      
-        send_w_oper = cls.write_byte(0x01, 0x03)            # Operation: Writing
+        send_data_msb = cls.write_byte(0x04, send_data[0])   # Send msb of data      
+        send_w_oper = cls.write_byte(0x01, 0x03)             # Operation: Writing
         send_waddr.extend(send_data_lsb)
         send_waddr.extend(send_data_msb)
         send_waddr.extend(send_w_oper)
@@ -88,11 +93,12 @@ class DataGen:
         """
         With a 1byte address, generate proper data 
         pattern for indirect reading process
+        data pattern: 4x32 bit
         """
-        send_raddr  = cls.write_byte(0x02, ind_addr)          # Send Address of inner reg
-        send_r_oper = cls.write_byte(0x01, 0x02)               # Operation: Reading
-        send_rmsb   = cls.read_byte(0x06)  
-        send_rlsb   = cls.read_byte(0x05)
+        send_raddr  = cls.write_byte(0x02, ind_addr)        # Send Address of inner reg
+        send_r_oper = cls.write_byte(0x01, 0x02)            # Operation: Reading
+        send_rmsb   = cls.read_byte(0x06)                   # Read 1 byte MSB data in itf_reg 0x06
+        send_rlsb   = cls.read_byte(0x05)                   # Read 1 byte LSB data in itf_reg 0x05
         send_raddr.extend(send_r_oper)
         send_raddr.extend(send_rmsb)
         send_raddr.extend(send_rlsb)

@@ -1,5 +1,5 @@
 """
-This module exports the FPGA tester to communicate between host end (PC) and FPGA.
+This module directly control the signal and data flow to and out of FPGA
 """
 import getpass
 import logging
@@ -7,7 +7,6 @@ import sys
 from collections import OrderedDict, namedtuple
 from datetime import datetime
 from enum import Enum
-
 import ok
 
 SUCCESS = ok.okCFrontPanel.NoError  # Alias for `SUCCESS` constant
@@ -26,8 +25,6 @@ class EndpointType(Enum):
         """Returns true if the endpoint type contains the okEH (control signal from slave to host)."""
         okEH_set = {EndpointType.WIRE_OUT, EndpointType.TRIGGER_OUT, EndpointType.PIPE_IN, EndpointType.PIPE_OUT}
         return self in okEH_set
-
-
 class FPGATester:
     """Class implements the host tester (PC end) for FPGA to communicate with chip."""
 
@@ -84,18 +81,24 @@ class FPGATester:
         self.logger.info("Device ID: {}".format(device_info.deviceID))
 
         self.device.LoadDefaultPLLConfiguration()  # Config PLL with settings stored in EEPROM
-
-        # if self.device.ConfigureFPGA(self.bitfile) != SUCCESS:  # Download Xilinx config bit-file to FPGA
-        #     self.logger.critical("Failed to config FPGA with bitstream file {}.".format(self.bitfile))
-        #     if not self.debug:
-        #         return None
-
+    # ------------------------------------------------------------- #
+    #   Download Xilinx config bit-file to FPGA
+    #   Comment this part after configure FPGA with the bit file
+    # ------------------------------------------------------------- #
+        if self.device.ConfigureFPGA(self.bitfile) != SUCCESS: 
+            self.logger.critical("Failed to config FPGA with bitstream file {}.".format(self.bitfile))
+            if not self.debug:
+                return None
+    # ------------------------------------------------------------- #
+    # ------------------------------------------------------------- #
         if self.device.IsFrontPanelEnabled() != True: # This line is always showed on during testing
             self.logger.critical("okHostInterface is not installed in the FPGA configuration.")
             if not self.debug:
                 return None
 
         return True
+    # ------------------------------------------------------------- #
+    #    Functions to control FPGA data flow
     # ------------------------------------------------------------- #
     def reset(self):
         """Reset FPGA hardware."""
@@ -106,7 +109,8 @@ class FPGATester:
         self.logger.info("Reset FPGA System")
 
     def config_spimaster(self):
-        # Configure SPI Master using a config trigger signal
+        """ Configure SPI Master using a config trigger signal
+        """
         self.write_trigger_in(self.ADDR_MAP["SPI_CONFIG"].address, 0) 
         self.logger.info("SPI Master is configured")
 
@@ -119,7 +123,7 @@ class FPGATester:
         self.write_wire_in(self.ADDR_MAP["ITF_SEL"].address, value, mask=0x01)
 
     def fifob_fullthresh(self, value):
-            # Input: integer value
+        # Input: integer value
         """Threshold value of FIFOB Prog Full"""
         self.write_wire_in(self.ADDR_MAP["FIFOB_THRESH"].address, value, mask=0xFFFF)
 
@@ -137,7 +141,8 @@ class FPGATester:
         """Find out if the status of chip, sta_wei and sta_act"""
         # True means fifob is not empty, false means fifob is full
         return self.read_wire_out(self.ADDR_MAP["STA_CHIP"].address)
-    
+    # ------------------------------------------------------------- #
+    #     Pipe in and Pipe out a bunch of data
     # ------------------------------------------------------------- #
     def fifo_write(self,fifodata):
         self.write_pipe_in(self.ADDR_MAP["FIFOA_IN_DATA"].address, fifodata)
@@ -146,7 +151,7 @@ class FPGATester:
         self.read_pipe_out(self.ADDR_MAP["FIFOB_OUT_DATA"].address, fifob_odata)
 
     # ------------------------------------------------------------- #
-    # ----------------- Write and read Endpoints ------------------ #
+    #      Write and read Endpoints 
     # ------------------------------------------------------------- #
      # Write Wire In
     def write_wire_in(self, addr, value, mask=0x01):   
@@ -200,4 +205,3 @@ class FPGATester:
         :param data: read data will be placed (change in-place) in the data.    
         """
         self.device.ReadFromPipeOut(addr, data)
-

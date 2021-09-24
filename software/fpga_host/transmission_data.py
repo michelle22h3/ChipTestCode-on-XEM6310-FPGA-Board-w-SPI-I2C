@@ -1,3 +1,6 @@
+    """ This module update signals of FPGA and 
+        transmit data to FPGA in a proper format
+    """
 import time
 import logging
 import numpy as np
@@ -6,24 +9,23 @@ from fpga_host.logger import setup_logger
 class TransData:
     def __init__(self, fpga_tester):
         self.fpga_tester = fpga_tester
-        
         self.logger = logging.getLogger('CIM_Process')
     # ----------------------------------------------------#  
     # Reset FPGA Host and logic
     # ----------------------------------------------------#  
     def reset_host(self):
-        """Call the functions to do reset and configuration."""
+        """Call the functions to do reset and do the configuration."""
         self.fpga_tester.reset()
         self.fpga_tester.config_spimaster()
-        self.fpga_tester.itf_selection(0) # 0 means select I2C and 1 means SPI
-        self.fpga_tester.led_cntl(0x3E)   # LED Mask is 3E
-        self.fpga_tester.fifob_fullthresh(0x50) 
-        self.fpga_tester.fifob_empty()
-        self.fpga_tester.sta_chip()
+        self.fpga_tester.itf_selection(0)        # 0 means select I2C and 1 means SPI
+        self.fpga_tester.led_cntl(0x3E)          # LED Mask is 3E
+        self.fpga_tester.fifob_fullthresh(0x50)  # Threshold is 80: 80(depth)x32 = 320x8 = 320 byte
+        self.fpga_tester.fifob_empty()           # Check if FIFOB is empty
+        self.fpga_tester.sta_chip()              # Check the status of chip: weight writing and MAC
 
     def update_wires(self):
         self.fpga_tester.fifob_fullthresh(0x50) 
-        self.fpga_tester.fifob_empty()
+        self.fpga_tester.fifob_empty()           
         self.fpga_tester.sta_chip()
     # ----------------------------------------------------#
     # Indirect write and read of ONE inner register
@@ -44,11 +46,12 @@ class TransData:
         self.fpga_tester.fifo_write(data_to_fifoa)
 
     def pipe_data_out(self, num:int):
-        dataout = bytearray(num*8)
+        dataout = bytearray(num*8) # 2x32bit/8 = 8 byte
         while self.fpga_tester.fifob_empty():
             time.sleep(0.1)
         self.fpga_tester.fifo_read(dataout)
-        print(dataout)
+        # print(dataout)
+        # Every 8 byte, there is a 2-byte data
         for i in range(num):
             data_twobyte = [hex(dataout[i*8]), hex(dataout[i*8+4])]
             self.logger.critical('Read out data: {}: '.format(data_twobyte))
@@ -77,11 +80,14 @@ class TransData:
         while not self.fpga_tester.sta_chip() == 3:
             time.sleep(0.1)
         self.logger.warning('MAC assert finish')
-
     # ----------------------------------------------------#
-
+    # Output: 640 bit = 80 byte
+    # Read out 1 byte from FIFOB: 32 bit contains 1 byte data
+    # Get all the output data: 80x(32/4)= 320 
+    # That is: 80 depth of data from FIFOB
+    # ----------------------------------------------------#
     def get_640b_out(self):
-        self.get_output()
+        self.fetch_output()
         outputdata = bytearray(0)
         while self.fpga_tester.fifob_progfull() == False:
             time.sleep(0.1)
@@ -89,13 +95,12 @@ class TransData:
         self.fpga_tester.fifo_read(data_received)
         for i in range(0, 320, 4):
             outputdata.append(data_received[i])
-        print(outputdata)
+        # print(outputdata)
         return outputdata
         
-    def get_output(self):
-        # dataout = bytearray(16)
+    def fetch_output(self):
         askdata = bytearray(0)
-        for _ in range(40):
+        for _ in range(40): # Read address of the 16-bit data for 40 times
             self.rdata_fifob_append(0x38, askdata)
         self.pipe_data_in(askdata)
 
