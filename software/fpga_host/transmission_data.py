@@ -126,10 +126,13 @@ class TransData:
                     # negate bit when positive
                     int_data = int_data * 2 - bit if negative else int_data * 2 + (1^bit)
                 if j == BITS - 1:
-                    int_data *= 2  # Double decoding data in custom format
+                    int_data *= 2               # Double decoding data in custom format
             decode_data.append(int_data) 
-        decode_data.reverse()   # From [0] to [63]
-        return decode_data   
+        decode_data.reverse()                   # From [0] to [63]
+        offset_data = [0 for i in range(64)]    # Substract by offset
+        for i in range(64):
+            decode_data[i] -= offset_data[i]
+        return None 
     # ----------------------------------------------------#
     def output_theory(self, activations: bytearray, weights: bytearray):
         weight_binary =  [self.access_bit(weights,i) for i in range(len(weights)*8)]
@@ -142,9 +145,9 @@ class TransData:
         activation_cal = np.array(activation_int)
         output_theory = np.dot(weight_cal.T, activation_cal)
         output_theory_list = list(output_theory)
-        output_theory_list.reverse()
+        output_theory_list.reverse() # From [0] to [63]
         return output_theory_list
-    # ----------------------------------------------------#
+
     def access_bit(self, data, num):
         base = int(num // 8)
         shift = int(num % 8)
@@ -154,3 +157,4 @@ class TransData:
         base = int(num // 8)
         shift = int(num % 8)
         return (data[base] >> shift) & 0xF
+    # ----------------------------------------------------#

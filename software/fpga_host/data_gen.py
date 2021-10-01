@@ -9,12 +9,13 @@ class DataGen:
     # Bytearray Data Generation 
     # ----------------------------------------------------#
     @classmethod
-    def full_zeros(cls, size: int):
+    def array_fullzeros(cls, size: int):
         """Handy alias for full 0s constant array"""
         return bytearray(size)
 
     @classmethod
     def array_fullff(cls, size: int):
+        """Generate an array full of FF"""
         data = bytearray([255])
         for _ in range(1, size):
             data.append(255)
@@ -22,30 +23,74 @@ class DataGen:
 
     @classmethod
     def array_constant(cls, size: int, value: int):
+        """Generate an array full of A constant"""
         data = bytearray([value])
-        for _ in range(1, size):
+        for _ in range(1, size):  # Append the left (size-1) values
             data.append(value)
         return data
     
     @classmethod
     def array_random(cls, size: int):
+        """Generate an array full of random value"""
         data = bytearray([random.randint(0,0xFF)])
         for _ in range(1, size):
             data.append(random.randint(0,0xFF))
         return data
+    # ----------------------------------------------------#    
+    @classmethod
+    def array_plus_f(cls, array_in: bytearray):
+        """Put another F on the input activations, only support 64 times of operation
+        Args:
+            array_in (bytearray): activation bytearray
+        Returns:
+            bytearray: modified activation array
+        """
+        array_value = int.from_bytes(array_in, byteorder='big')
+        array_value = array_value*16 + 15
+        array_mask = int(2**256 -1)   # Array mask to avoid data longer than 32 bytes
+        array_value = array_value & array_mask
+        array_out = array_value.to_bytes(32, byteorder='big')
+        array_out = bytearray(array_out)
+        return array_out
+
+    @classmethod
+    def array_plusone_each(cls, array_in: bytearray):
+        """Increment a 1 in each input activation
+        Args:
+            array_in (bytearray): activation bytearray
+        Returns:
+            bytearray: modified activation array
+        """
+        for i in range(len(array_in)):
+            if array_in[i]  < 255: # Avoid error when byte data >255
+                array_in[i]+=17
+        return array_in
+    
+    # @classmethod
+    # def array_shift_l_loop(array_in: bytearray):
+    #     """Shift left the array by 8 bit in a loop style"""
+    #     last_byte = array_in[0]
+    #     array_in.pop(0)
+    #     array_in.append(last_byte)
+    
+    @classmethod    
+    def array_shift_l4bit(array_in: bytearray):
+        """Shift left the array by 4-bit, only support 64 times of operation"""
+        array_value = int.from_bytes(array_in, byteorder='big')
+        array_value = array_value << 4
+        array_out = array_value.to_bytes(32, byteorder='big')
+        return array_out
     
     @classmethod
-    def array_increment(cls, array_in: bytearray):
-        array_in.pop(0)
-        array_in.append(0xFF)
-        return array_in
-
-    @classmethod
-    def array_increment_each(cls, array_in: bytearray):
-        for i in range(len(array_in)):
-            array_in[i]+=17
-        return array_in
-
+    def array_plus_one(array_in: bytearray):
+        """Plus 1 on the 64th input activation"""
+        array_value = int.from_bytes(array_in, byteorder='big')
+        array_value = array_value + 1
+        array_mask  = int(2**256 -1)   # Array mask to avoid data longer than 32 bytes
+        array_value = array_value & array_mask
+        array_out = array_value.to_bytes(32, byteorder='big')
+        array_out = bytearray(array_out)
+        return array_out
     # ----------------------------------------------------#
     # Data Pattern transmitted to FIFO
     # ----------------------------------------------------#
