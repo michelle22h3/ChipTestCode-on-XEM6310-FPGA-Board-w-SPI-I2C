@@ -34,6 +34,7 @@ class FPGATester:
     AddrMapEntry = namedtuple("AddrMapEntry", ["type", "address"])  # Data type for each address map entry
     ADDR_MAP = OrderedDict([
         ("SW_RST", AddrMapEntry(EndpointType.WIRE_IN, 0x07)),  # Software reset pin address
+        ("CHIP_RST", AddrMapEntry(EndpointType.WIRE_IN, 0x10)), # Chip reset pin address
         ("ITF_SEL", AddrMapEntry(EndpointType.WIRE_IN, 0x17)),  # ITF Selection signal
         ("FIFOB_THRESH", AddrMapEntry(EndpointType.WIRE_IN, 0x18)),  # ITF Selection signal
         ("STA_CHIP", AddrMapEntry(EndpointType.WIRE_OUT, 0x27)),  # Status of CIM chip
@@ -106,6 +107,14 @@ class FPGATester:
         self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x00, mask=0x01)
         self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x01, mask=0x01)
         self.write_wire_in(self.ADDR_MAP["SW_RST"].address, value=0x00, mask=0x01)
+        self.logger.info("Reset FPGA System")
+        
+    def chip_reset(self):
+        """Reset FPGA hardware."""
+        # Generate a falling edge @ sw reset address (write 1 first then 0)
+        self.write_wire_in(self.ADDR_MAP["CHIP_RST"].address, value=0x01, mask=0x01)
+        self.write_wire_in(self.ADDR_MAP["CHIP_RST"].address, value=0x00, mask=0x01)
+        self.write_wire_in(self.ADDR_MAP["CHIP_RST"].address, value=0x01, mask=0x01)
         self.logger.info("Reset FPGA System")
 
     def config_spimaster(self):

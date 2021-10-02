@@ -1,8 +1,9 @@
 
 `ifndef __CONFIG_VH__
 `define __CONFIG_VH__
-
+// WireIn
 `define SW_RST_ADDR 8'h07
+`define CHIP_RST_ADDR 8'h10
 `define ITF_SEL_ADDR 8'h17
 `define FIFOB_THRESH_ADDR 8'h18
 
@@ -18,10 +19,7 @@
 
 `define FIFOB_OUT_DATA_ADDR 8'hA7
 
-// Number of endpoints requiring `okEH`
+// Number of endpoints requiring `okEH` (WireOut and PipeIn/Out)
 `define NUM_ENDPOINTS 5
 
 `endif
-
-
-

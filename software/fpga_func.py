@@ -38,6 +38,8 @@ class FpgaFunc:
         self.fpga_tester.initialize_device()
         # Reset and update all the signals 
         self.trans.reset_host()
+        # Reset Chip
+        self.trans.reset_chip()
     # ----------------------------------------------------#
     # Run the FPGA Host
     # ----------------------------------------------------#
@@ -64,12 +66,12 @@ class FpgaFunc:
         weights = DataGen.array_fullzeros(512)
         # weights = DataGen.array_fullff(512)
         outputs = []
-        for _ in range(65): # from 64 of 0 to 64 of 4'b1111
+        for _ in range(65): # from 64 of 0 to 64 of 4'b1111: 65 cycles
             self.cim_processing(activations,weights,outputs)     
             outputs_theory = self.trans.output_theory(activations, weights)
             print(outputs)
             print('Theory: {} '.format(outputs_theory))
-            activations = DataGen.array_plus_f(activations)
+            activations = DataGen.act_plus_f(activations)
             with open(path_out,'a') as filea:
                 filea.write("%s\n" % outputs)
             with open(path_outtheory,'a') as fileb:
@@ -80,12 +82,12 @@ class FpgaFunc:
         weights = DataGen.array_fullzeros(512)
         # weights = DataGen.array_fullff(512)
         outputs = []
-        for _ in range(16): # from 64 of 0 to 64 of 4'b1111
+        for _ in range(16): # from 64 of 0 to 64 of 4'b1111: 16 cycles
             self.cim_processing(activations,weights,outputs)     
             outputs_theory = self.trans.output_theory(activations, weights)
             print(outputs)
             print('Theory: {} '.format(outputs_theory))
-            activations = DataGen.array_plusone_each(activations)
+            activations = DataGen.act_plusone_each(activations)
             with open(path_out,'a') as filea:
                 filea.write("%s\n" % outputs)
             with open(path_outtheory,'a') as fileb:
@@ -96,6 +98,16 @@ class FpgaFunc:
         weights = DataGen.array_fullzeros(512)
         # weights = DataGen.array_fullff(512)
         outputs = []
+        for _ in range(961): # from 64 of 0 to 64 of 4'b1111: 961 cycles
+            self.cim_processing(activations,weights,outputs)     
+            outputs_theory = self.trans.output_theory(activations, weights)
+            print(outputs)
+            print('Theory: {} '.format(outputs_theory))
+            activations = DataGen.act_plusone_each(activations)
+            with open(path_out,'a') as filea:
+                filea.write("%s\n" % outputs)
+            with open(path_outtheory,'a') as fileb:
+                fileb.write("%s\n" % outputs_theory)
         
     # ----------------------------------------------------#
     # Function for One cycle of MAC Operation 

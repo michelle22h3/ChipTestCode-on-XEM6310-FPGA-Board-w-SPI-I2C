@@ -24,9 +24,15 @@ class TransData:
         self.fpga_tester.sta_chip()              # Check the status of chip: weight writing and MAC
 
     def update_wires(self):
+        """Update signals"""
         self.fpga_tester.fifob_fullthresh(0x50) 
         self.fpga_tester.fifob_empty()           
         self.fpga_tester.sta_chip()
+        
+    def reset_chip(self):
+        """Reset the chip"""
+        self.fpga_tester.chip_reset()
+        
     # ----------------------------------------------------#
     # Indirect write and read of ONE inner register
     # ----------------------------------------------------#   
