@@ -47,24 +47,30 @@ class FpgaFunc:
         """Here we call the following fuctions to do data tx and computing"""
         self.access_reg()
         self.mac_offset_measure()
+        # self.offset_compen()
+        # self.edges()
+        # self.plus_one()
+        # self.act_shift_append()
 
     def mac_offset_measure(self):
         """Measure the offset of each column, full0 and fullF weights"""
         activations = DataGen.array_fullzeros(32)
         weights = DataGen.array_fullzeros(512)
-        # weights = DataGen.array_fullff(512)
+        #weights = DataGen.array_fullff(512)
         outputs = []
         self.cim_processing(activations,weights,outputs)     
         outputs_theory = self.trans.output_theory(activations, weights)
         print(outputs)
         print('Theory: {} '.format(outputs_theory))
+        with open(path_out,'a') as filea:
+                filea.write("%s\n" % outputs)
         
     def offset_compen(self):
         """64 cycles operation: each time append a 4'b1111 on activations
         """
         activations = DataGen.array_fullzeros(32)
-        weights = DataGen.array_fullzeros(512)
-        # weights = DataGen.array_fullff(512)
+        # weights = DataGen.array_fullzeros(512)
+        weights = DataGen.array_fullff(512)
         outputs = []
         for _ in range(65): # from 64 of 0 to 64 of 4'b1111: 65 cycles
             self.cim_processing(activations,weights,outputs)     
@@ -72,15 +78,17 @@ class FpgaFunc:
             print(outputs)
             print('Theory: {} '.format(outputs_theory))
             activations = DataGen.act_plus_f(activations)
+            weights.clear()                         # Clear weight data
             with open(path_out,'a') as filea:
                 filea.write("%s\n" % outputs)
             with open(path_outtheory,'a') as fileb:
                 fileb.write("%s\n" % outputs_theory)
+            self.clear_act_reg()                    # Clear activation flag
         
     def edges(self):
         activations = DataGen.array_fullzeros(32)
-        weights = DataGen.array_fullzeros(512)
-        # weights = DataGen.array_fullff(512)
+        # weights = DataGen.array_fullzeros(512)
+        weights = DataGen.array_fullff(512)
         outputs = []
         for _ in range(16): # from 64 of 0 to 64 of 4'b1111: 16 cycles
             self.cim_processing(activations,weights,outputs)     
@@ -95,20 +103,39 @@ class FpgaFunc:
     
     def plus_one(self):
         activations = DataGen.array_fullzeros(32)
-        weights = DataGen.array_fullzeros(512)
-        # weights = DataGen.array_fullff(512)
+        # weights = DataGen.array_fullzeros(512)
+        weights = DataGen.array_fullff(512)
         outputs = []
         for _ in range(961): # from 64 of 0 to 64 of 4'b1111: 961 cycles
             self.cim_processing(activations,weights,outputs)     
             outputs_theory = self.trans.output_theory(activations, weights)
             print(outputs)
             print('Theory: {} '.format(outputs_theory))
-            activations = DataGen.act_plusone_each(activations)
+            activations.reverse()
+            activations = DataGen.act_plus_one(activations)
+            activations.reverse()
             with open(path_out,'a') as filea:
                 filea.write("%s\n" % outputs)
             with open(path_outtheory,'a') as fileb:
                 fileb.write("%s\n" % outputs_theory)
-        
+            self.access_reg()
+    def act_shift_append(self):
+        activations = DataGen.array_fullzeros(32)
+        # weights = DataGen.array_fullzeros(512)
+        weights = DataGen.array_fullff(512)
+        outputs = []
+        for _ in range(65): # append act data from all 0 to 64 act (65 cycles)
+            self.cim_processing(activations,weights,outputs)     
+            outputs_theory = self.trans.output_theory(activations, weights)
+            print(outputs)
+            print('Theory: {} '.format(outputs_theory))
+            activations = DataGen.act_append_random(activations)
+            weights.clear()                         # Clear weight data
+            with open(path_out,'a') as filea:
+                filea.write("%s\n" % outputs)
+            with open(path_outtheory,'a') as fileb:
+                fileb.write("%s\n" % outputs_theory)
+            self.clear_act_reg()                    # Clear activation flag
     # ----------------------------------------------------#
     # Function for One cycle of MAC Operation 
     # ----------------------------------------------------#
@@ -121,7 +148,7 @@ class FpgaFunc:
         self.trans.wdata_fifoa_append(0x14,0x0090,w_to_reg)  # Set Start Bit to 9
         self.trans.wdata_fifoa_append(0x00,0x0003,w_to_reg)  # Clear status of Chip
         self.trans.wdata_fifoa_append(0x2C,0x0003,w_to_reg)  # Enable weight and actvation writing
-        self.trans.wdata_fifoa_append(0x00,0x0003,w_to_reg) 
+        self.trans.wdata_fifoa_append(0x00,0x0003,w_to_reg)  # Clear status of Chip 
         self.trans.rdata_fifob_append(0x00,w_to_reg)         # 2x32bit in FIFOB
         self.trans.rdata_fifob_append(0x10,w_to_reg)   
         self.trans.rdata_fifob_append(0x14,w_to_reg) 
@@ -131,19 +158,42 @@ class FpgaFunc:
         # Read out data from those address
         self.trans.pipe_data_out(num=4) 
         # Number of regs to be read, num must be even numbers
+    def clear_act_reg(self):
+        self.trans.reset_host()
+        w_to_reg=bytearray(0)
+        self.trans.wdata_fifoa_append(0x00,0x0001,w_to_reg)  # Clear status of Activation ready
+        self.trans.wdata_fifoa_append(0x00,0x0001,w_to_reg)  # Clear status of Activation ready
+        # Pipe data into inner regs
+        self.trans.pipe_data_in(w_to_reg)
     # ----------------------------------------------------#
     def cim_processing(self, activations:bytearray, weights:bytearray, outputs:list):
         """One cycle of MAC Operation
         """
         self.trans.update_wires()
-        self.trans.write_weights(weights)             # Write weights
+        if len(weights) !=0:
+            self.trans.write_weights(weights)         # Write weights only when new weight data is avaliable
         self.trans.write_activations(activations)     # Write activations
-        time.sleep(1)
+        #time.sleep(0.1)
         self.trans.mac_assert_finish() 
-        time.sleep(0.1)
+        #time.sleep(0.1)
         outdata_re = self.trans.get_640b_out()
         self.trans.decode_out(outdata_re, outputs)
-        print(outputs)
+    # ----------------------------------------------------#
+    def cim_processing_scale(self, activations:bytearray, weights:bytearray, outputs:list):
+        """One cycle of MAC Operation with activation scaling
+        """
+        self.trans.update_wires()
+        if len(weights) !=0:
+            self.trans.write_weights(weights)         # Write weights only when new weight data is avaliable
+        activations_new, scale_factor = DataGen.act_scale(activations)
+        self.trans.write_activations(activations_new)     # Write activations
+        #time.sleep(0.1)
+        self.trans.mac_assert_finish() 
+        #time.sleep(0.1)
+        outdata_re = self.trans.get_640b_out()
+        self.trans.decode_out(outdata_re, outputs)
+        for i in range(64):
+            outputs[i] = (outputs[i]/scale_factor)
     # ----------------------------------------------------#
     
 # ----------------------------------------------------#

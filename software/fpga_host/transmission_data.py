@@ -1,6 +1,6 @@
-    """ This module update signals of FPGA and 
-        transmit data to FPGA in a proper format
-    """
+""" This module update signals of FPGA and 
+    transmit data to FPGA in a proper format
+"""
 import time
 import logging
 import numpy as np
@@ -54,7 +54,7 @@ class TransData:
     def pipe_data_out(self, num:int):
         dataout = bytearray(num*8) # 2x32bit/8 = 8 byte
         while self.fpga_tester.fifob_empty():
-            time.sleep(0.1)
+            time.sleep(0.0001)
         self.fpga_tester.fifo_read(dataout)
         # print(dataout)
         # Every 8 byte, there is a 2-byte data
@@ -135,9 +135,9 @@ class TransData:
                     int_data *= 2               # Double decoding data in custom format
             decode_data.append(int_data) 
         decode_data.reverse()                   # From [0] to [63]
-        offset_data = [0 for i in range(64)]    # Substract by offset
-        for i in range(64):
-            decode_data[i] -= offset_data[i]
+        # offset_data = [0 for i in range(64)]    # Substract by offset
+        # for i in range(64):
+        #     decode_data[i] -= offset_data[i]
         return None 
     # ----------------------------------------------------#
     def output_theory(self, activations: bytearray, weights: bytearray):

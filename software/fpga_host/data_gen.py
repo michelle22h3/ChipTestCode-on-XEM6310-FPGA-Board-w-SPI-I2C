@@ -3,7 +3,6 @@ This module export data generator to generate different data patterns for testin
 """
 
 import random
-import os
 class DataGen:
     # ----------------------------------------------------#
     # Bytearray Data Generation 
@@ -32,8 +31,8 @@ class DataGen:
     @classmethod
     def array_random(cls, size: int):
         """Generate an array full of random value"""
-        data = bytearray([random.randint(0,0xFF)])
-        for _ in range(1, size):
+        data = bytearray(0)
+        for _ in range(0, size):
             data.append(random.randint(0,0xFF))
         return data
     # ----------------------------------------------------#  
@@ -59,16 +58,6 @@ class DataGen:
                 array_in[i]+=17
         return array_in
     
-    @classmethod    
-    def act_shiftl_nbit(cls, array_in: bytearray, bit_num: int):
-        """Shift left the array by 4-bit"""
-        array_value = int.from_bytes(array_in, byteorder='big')
-        array_value = array_value << bit_num
-        array_mask = (1 << 256) - 1
-        array_value = array_value & array_mask
-        array_out = bytearray(array_value.to_bytes(32, byteorder='big'))
-        return array_out
-    
     @classmethod
     def act_plus_one(cls, array_in: bytearray):
         """Plus 1 on the 64th input activation"""
@@ -80,6 +69,53 @@ class DataGen:
         array_value = array_value & array_mask
         array_out = bytearray(array_value.to_bytes(32, byteorder='big'))
         return array_out
+    
+    @classmethod    
+    def act_append_random(cls, array_in: bytearray):
+        """Pop out an activation and append a random value"""
+        array_value = int.from_bytes(array_in, byteorder='big')
+        array_value = array_value << 4
+        array_mask  = (1 << 256) - 1
+        array_value = array_value & array_mask
+        array_value += random.randint(0,15)
+        array_out = bytearray(array_value.to_bytes(32, byteorder='big'))
+        return array_out
+    # ----------------------------------------------------#
+    # Activation data scaling
+    # ----------------------------------------------------#
+    @classmethod    
+    def act_scale(cls, act_array:bytearray):
+        """Return:
+        the scaled activation bytearray 
+        the float data: scaling factor"""
+        act_list = cls.array_to_list(act_array)                
+        act_max =max(act_list)           
+        scale_value = float(15 / act_max)
+        for i in range(64):
+            act_list[i] = act_list[i]*scale_value
+            act_list[i] = round(act_list[i])
+        act_new = cls.list_to_array(act_list)
+        return act_new, scale_value
+    # ---------------------------------------------------------- #
+    @classmethod    
+    def array_to_list(cls, in_array:bytearray):
+        """Convert a 32-length bytearray to a 64-length list"""
+        act_value = int.from_bytes(in_array, byteorder='big')
+        act_list = []
+        for _ in range(64):
+            act_list.append((act_value & 0xF))
+            act_value = act_value >> 4
+        act_list.reverse()      # Get the correct order
+        return act_list
+    @classmethod    
+    def list_to_array(cls, in_list:list):
+        """Convert a 64-length list to a 32-length bytearray """
+        out_array = bytearray(0)
+        for i in range(0,64,2):
+            data = in_list[i]*16 +in_list[i+1]
+            out_array.append(data)
+        return out_array
+    
     # ----------------------------------------------------#
     # Data Pattern transmitted to FIFO
     # ----------------------------------------------------#
