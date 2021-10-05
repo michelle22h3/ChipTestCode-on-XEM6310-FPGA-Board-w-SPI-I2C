@@ -77,7 +77,7 @@ class DataGen:
         array_value = array_value << 4
         array_mask  = (1 << 256) - 1
         array_value = array_value & array_mask
-        array_value += random.randint(0,15)
+        array_value += random.randint(0,1) # Including 0 and 15
         array_out = bytearray(array_value.to_bytes(32, byteorder='big'))
         return array_out
     # ----------------------------------------------------#
@@ -89,8 +89,11 @@ class DataGen:
         the scaled activation bytearray 
         the float data: scaling factor"""
         act_list = cls.array_to_list(act_array)                
-        act_max =max(act_list)           
-        scale_value = float(15 / act_max)
+        act_max = max(act_list)   
+        if act_max == 0:
+            scale_value = 1
+        else:        
+            scale_value = float(15 / act_max)
         for i in range(64):
             act_list[i] = act_list[i]*scale_value
             act_list[i] = round(act_list[i])

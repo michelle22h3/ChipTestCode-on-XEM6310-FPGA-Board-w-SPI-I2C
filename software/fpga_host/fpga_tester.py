@@ -86,10 +86,10 @@ class FPGATester:
     #   Download Xilinx config bit-file to FPGA
     #   Comment this part after configure FPGA with the bit file
     # ------------------------------------------------------------- #
-        # if self.device.ConfigureFPGA(self.bitfile) != SUCCESS: 
-        #     self.logger.critical("Failed to config FPGA with bitstream file {}.".format(self.bitfile))
-        #     if not self.debug:
-        #         return None
+        if self.device.ConfigureFPGA(self.bitfile) != SUCCESS: 
+            self.logger.critical("Failed to config FPGA with bitstream file {}.".format(self.bitfile))
+            if not self.debug:
+                return None
     # ------------------------------------------------------------- #
     # ------------------------------------------------------------- #
         if self.device.IsFrontPanelEnabled() != True: # This line is always showed on during testing

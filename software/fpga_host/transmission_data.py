@@ -17,7 +17,7 @@ class TransData:
         """Call the functions to do reset and do the configuration."""
         self.fpga_tester.reset()
         self.fpga_tester.config_spimaster()
-        self.fpga_tester.itf_selection(0)        # 0 means select I2C and 1 means SPI
+        self.fpga_tester.itf_selection(1)        # 0 means select I2C and 1 means SPI
         self.fpga_tester.led_cntl(0x3E)          # LED Mask is 3E
         self.fpga_tester.fifob_fullthresh(0x50)  # Threshold is 80: 80(depth)x32 = 320x8 = 320 byte
         self.fpga_tester.fifob_empty()           # Check if FIFOB is empty
@@ -54,7 +54,7 @@ class TransData:
     def pipe_data_out(self, num:int):
         dataout = bytearray(num*8) # 2x32bit/8 = 8 byte
         while self.fpga_tester.fifob_empty():
-            time.sleep(0.0001)
+            time.sleep(0.1)
         self.fpga_tester.fifo_read(dataout)
         # print(dataout)
         # Every 8 byte, there is a 2-byte data
@@ -96,7 +96,7 @@ class TransData:
         self.fetch_output()
         outputdata = bytearray(0)
         while self.fpga_tester.fifob_progfull() == False:
-            time.sleep(0.1)
+            time.sleep(0.001)
         data_received = bytearray(320)
         self.fpga_tester.fifo_read(data_received)
         for i in range(0, 320, 4):
