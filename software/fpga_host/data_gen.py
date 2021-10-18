@@ -33,7 +33,7 @@ class DataGen:
         """Generate an array full of random value"""
         data = bytearray(0)
         for _ in range(0, size):
-            data.append(random.randint(0,0xFF))
+            data.append(random.randint(0x00,0xFF))  
         return data
     # ----------------------------------------------------#  
     #       Functions to increment activations
@@ -69,7 +69,7 @@ class DataGen:
         array_value = array_value & array_mask
         array_out = bytearray(array_value.to_bytes(32, byteorder='big'))
         return array_out
-    
+    # ----------------------------------------------------#  
     @classmethod    
     def act_append_random(cls, array_in: bytearray):
         """Pop out an activation and append a random value"""
@@ -94,9 +94,13 @@ class DataGen:
             scale_value = 1
         else:        
             scale_value = float(15 / act_max)
+            if scale_value < 1:
+                scale_value = 1.0
         for i in range(64):
             act_list[i] = act_list[i]*scale_value
             act_list[i] = round(act_list[i])
+            if act_list[i] > 6:
+                act_list[i] -= 2
         act_new = cls.list_to_array(act_list)
         return act_new, scale_value
     # ---------------------------------------------------------- #
@@ -118,7 +122,6 @@ class DataGen:
             data = in_list[i]*16 +in_list[i+1]
             out_array.append(data)
         return out_array
-    
     # ----------------------------------------------------#
     # Data Pattern transmitted to FIFO
     # ----------------------------------------------------#

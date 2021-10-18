@@ -135,9 +135,14 @@ class TransData:
                     int_data *= 2               # Double decoding data in custom format
             decode_data.append(int_data) 
         decode_data.reverse()                   # From [0] to [63]
-        # offset_data = [0 for i in range(64)]    # Substract by offset
-        # for i in range(64):
-        #     decode_data[i] -= offset_data[i]
+        # Substract by offset
+        offset_data = [96, 112, 0, 0, 62, -28, 60, 6, -14, 0, -30, -58, 0, 
+                       -54, 0, -60, -56, -22, 30, 2, 0, -78, 14, -62, -48, 
+                       -28, 14, 64, -2, -28, 62, -16, 56, 12, 0, -30, 12, 0, 
+                       0, 0, 0, -14, 62, 0, 28, -28, 0, 14, 30, -14, 0, 14, 
+                       -28, 26, 30, 120, -2, -56, 0, 112, -24, -30, 2, 0]
+        for i in range(64):
+            decode_data[i] -= offset_data[i]
         return None 
     # ----------------------------------------------------#
     def output_theory(self, activations: bytearray, weights: bytearray):
