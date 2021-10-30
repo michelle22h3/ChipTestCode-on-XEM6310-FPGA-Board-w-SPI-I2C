@@ -3,6 +3,7 @@ This module export data generator to generate different data patterns for testin
 """
 
 import random
+import math
 class DataGen:
     # ----------------------------------------------------#
     # Bytearray Data Generation 
@@ -23,8 +24,8 @@ class DataGen:
     @classmethod
     def array_constant(cls, size: int, value: int):
         """Generate an array full of A constant"""
-        data = bytearray([value])
-        for _ in range(1, size):  # Append the left (size-1) values
+        data = bytearray()
+        for _ in range(0, size):  # Append the left (size-1) values
             data.append(value)
         return data
     
@@ -33,7 +34,7 @@ class DataGen:
         """Generate an array full of random value"""
         data = bytearray(0)
         for _ in range(0, size):
-            data.append(random.randint(0x00,0xFF))  
+            data.append(random.randint(0x0C,0xFF))  
         return data
     # ----------------------------------------------------#  
     #       Functions to increment activations
@@ -53,7 +54,8 @@ class DataGen:
     def act_plusone_each(cls, array_in: bytearray):
         """Increment a 1 in each input activation
         """
-        for i in range(len(array_in)):
+        half_len = 32
+        for i in range(half_len):
             if array_in[i]  < 255:     # Avoid error when byte data >255
                 array_in[i]+=17
         return array_in
@@ -77,7 +79,7 @@ class DataGen:
         array_value = array_value << 4
         array_mask  = (1 << 256) - 1
         array_value = array_value & array_mask
-        array_value += random.randint(0,1) # Including 0 and 15
+        array_value += random.randint(0,5) # Including 0 and 15
         array_out = bytearray(array_value.to_bytes(32, byteorder='big'))
         return array_out
     # ----------------------------------------------------#
@@ -88,40 +90,51 @@ class DataGen:
         """Return:
         the scaled activation bytearray 
         the float data: scaling factor"""
-        act_list = cls.array_to_list(act_array)                
+        act_list = cls.array_to_list(act_array)               
         act_max = max(act_list)   
         if act_max == 0:
             scale_value = 1
         else:        
-            scale_value = float(15 / act_max)
+            scale_value = int(15/ act_max)
             if scale_value < 1:
-                scale_value = 1.0
-        for i in range(64):
+                scale_value = 1
+        for i in range(len(act_list)):
             act_list[i] = act_list[i]*scale_value
-            act_list[i] = round(act_list[i])
             if act_list[i] > 6:
-                act_list[i] -= 2
+                act_list[i] -= 1
         act_new = cls.list_to_array(act_list)
         return act_new, scale_value
+    
+    @classmethod    
+    def act_pulsecompen(cls, act_array:bytearray):
+        """Return:
+        the scaled activation bytearray 
+        the float data: scaling factor"""
+        act_list = cls.array_to_list(act_array)  
+        for i in range(len(act_list)):
+            if act_list[i] > 6:
+                act_list[i] -= 1
+        act_new = cls.list_to_array(act_list)
+        return act_new
     # ---------------------------------------------------------- #
     @classmethod    
     def array_to_list(cls, in_array:bytearray):
-        """Convert a 32-length bytearray to a 64-length list"""
-        act_value = int.from_bytes(in_array, byteorder='big')
-        act_list = []
-        for _ in range(64):
-            act_list.append((act_value & 0xF))
-            act_value = act_value >> 4
-        act_list.reverse()      # Get the correct order
+        """Convert a bytearray to a double-length list"""
+        act_list = [cls.access_halfbyte(in_array,i) for i in range(0, len(in_array)*8, 4)]
         return act_list
     @classmethod    
     def list_to_array(cls, in_list:list):
-        """Convert a 64-length list to a 32-length bytearray """
+        """Convert a list to a half-length bytearray """
         out_array = bytearray(0)
-        for i in range(0,64,2):
+        for i in range(0,len(in_list),2):
             data = in_list[i]*16 +in_list[i+1]
             out_array.append(data)
         return out_array
+    @classmethod  
+    def access_halfbyte(cls, data, num):
+        base = int(num // 8)
+        shift = 4 - int(num % 8)
+        return (data[base] >> shift) & 0xF
     # ----------------------------------------------------#
     # Data Pattern transmitted to FIFO
     # ----------------------------------------------------#

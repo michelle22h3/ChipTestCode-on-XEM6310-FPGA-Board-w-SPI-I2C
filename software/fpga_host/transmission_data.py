@@ -84,7 +84,7 @@ class TransData:
     
     def mac_assert_finish(self):
         while not self.fpga_tester.sta_chip() == 3:
-            time.sleep(0.1)
+            time.sleep(0.0000001)
         self.logger.warning('MAC assert finish')
     # ----------------------------------------------------#
     # Output: 640 bit = 80 byte
@@ -96,7 +96,7 @@ class TransData:
         self.fetch_output()
         outputdata = bytearray(0)
         while self.fpga_tester.fifob_progfull() == False:
-            time.sleep(0.001)
+            time.sleep(0.0000001)
         data_received = bytearray(320)
         self.fpga_tester.fifo_read(data_received)
         for i in range(0, 320, 4):
@@ -136,36 +136,37 @@ class TransData:
             decode_data.append(int_data) 
         decode_data.reverse()                   # From [0] to [63]
         # Substract by offset
-        offset_data = [96, 112, 0, 0, 62, -28, 60, 6, -14, 0, -30, -58, 0, 
-                       -54, 0, -60, -56, -22, 30, 2, 0, -78, 14, -62, -48, 
-                       -28, 14, 64, -2, -28, 62, -16, 56, 12, 0, -30, 12, 0, 
-                       0, 0, 0, -14, 62, 0, 28, -28, 0, 14, 30, -14, 0, 14, 
-                       -28, 26, 30, 120, -2, -56, 0, 112, -24, -30, 2, 0]
+        offset_data = [14, 30, 0, 0, 14, -8, 14, 0, 0, 0, -8, -14, 0, -24, 0, -34, -14, 
+                       -14, 14, 2, -4, -36, 0, -22, -14, -2, 0, 2, 0, -6, 8, -10, 14, 0, 
+                       -2, -14, 0, 0, 0, 0, 0, -6, 14, 0, 0, -12, 0, 0, 6, -12, 0, 0, 0, 
+                       2, 14, 42, 0, -12, 0, 30, -12, -12, 0, 0]
         for i in range(64):
             decode_data[i] -= offset_data[i]
         return None 
     # ----------------------------------------------------#
     def output_theory(self, activations: bytearray, weights: bytearray):
-        weight_binary =  [self.access_bit(weights,i) for i in range(len(weights)*8)]
+        weight_binary =  [self.access_bit(weights,i) for i in range(len(weights)*8)] # i starts from left to right
         for j in range(len(weight_binary)):
             if weight_binary[j] == 0:
-                weight_binary[j] = -1
+                weight_binary[j] = -1  # 0 representing -1 weight 
         weight_cal_a = np.array(weight_binary)
-        weight_cal=np.reshape(weight_cal_a, (64,64))
+        weight_cal=np.reshape(weight_cal_a, (64,64))  # 64 by 64 weight array
         activation_int = [self.access_halfbyte(activations,i) for i in range(0, len(activations)*8, 4)]
         activation_cal = np.array(activation_int)
         output_theory = np.dot(weight_cal.T, activation_cal)
         output_theory_list = list(output_theory)
-        output_theory_list.reverse() # From [0] to [63]
+        output_theory_list.reverse()   # From [0] to [63]
         return output_theory_list
 
     def access_bit(self, data, num):
+        """Access bit in bytes, for each byte, from left to right
+        """
         base = int(num // 8)
-        shift = int(num % 8)
+        shift = 7 - int(num % 8) # Use 7-the remainder to get the bit from Left to right
         return (data[base] >> shift) & 0x1
 
     def access_halfbyte(self, data, num):
         base = int(num // 8)
-        shift = int(num % 8)
+        shift = 4 - int(num % 8) # Use 4-the remainder to get the bit from Left to right
         return (data[base] >> shift) & 0xF
     # ----------------------------------------------------#
